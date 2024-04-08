@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.2.1">
 <title data-rh="true">创建异步Thunk | Redux Toolkit</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://ouweiya.github.io/redux-toolkit-zh/img/redux-logo-landscape.png"><meta data-rh="true" name="twitter:image" content="https://ouweiya.github.io/redux-toolkit-zh/img/redux-logo-landscape.png"><meta data-rh="true" property="og:url" content="https://ouweiya.github.io/redux-toolkit-zh/api/createAsyncThunk"><meta data-rh="true" property="og:locale" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="zh-Hans"><meta data-rh="true" name="docsearch:language" content="zh-Hans"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="创建异步Thunk | Redux Toolkit"><meta data-rh="true" name="description" content="&amp;nbsp;"><meta data-rh="true" property="og:description" content="&amp;nbsp;"><link data-rh="true" rel="icon" href="/redux-toolkit-zh/img/favicon/favicon.ico"><link data-rh="true" rel="canonical" href="https://ouweiya.github.io/redux-toolkit-zh/api/createAsyncThunk"><link data-rh="true" rel="alternate" href="https://ouweiya.github.io/redux-toolkit-zh/api/createAsyncThunk" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://ouweiya.github.io/redux-toolkit-zh/api/createAsyncThunk" hreflang="x-default"><link rel="stylesheet" href="/redux-toolkit-zh/assets/css/styles.b5dc1f15.css">
-<script src="/redux-toolkit-zh/assets/js/runtime~main.af9a33e3.js" defer="defer"></script>
+<script src="/redux-toolkit-zh/assets/js/runtime~main.cb5820e8.js" defer="defer"></script>
 <script src="/redux-toolkit-zh/assets/js/main.98c92f97.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -51,7 +51,7 @@
 <ul>
 <li><code>condition(arg, { getState, extra } ): boolean | Promise&lt;boolean&gt;</code>：一个可以用来跳过执行 payload 创建器和所有动作分派的回调，如果需要的话。请参见 <a href="#canceling-before-execution">在执行前取消</a> 以获取完整描述。</li>
 <li><code>dispatchConditionRejection</code>：如果 <code>condition()</code> 返回 <code>false</code>，默认行为是根本不会分派任何动作。如果你仍然希望在 thunk 被取消时分派一个 &quot;rejected&quot; 动作，将此标志设置为 <code>true</code>。</li>
-<li><code>idGenerator(arg): string</code>：用于生成请求序列的 <code>requestId</code> 的函数。默认使用 <a href="/redux-toolkit-zh/assets/files/otherExports-38ba8bfcd673bdcdc8a083c963f79b2a.mdx#nanoid" target="_blank">nanoid</a>，但你可以实现自己的 ID 生成逻辑。</li>
+<li><code>idGenerator(arg): string</code>：用于生成请求序列的 <code>requestId</code> 的函数。默认使用 <a href="/redux-toolkit-zh/assets/files/otherExports-4226267695ef82f293ddb0b15d138e82.mdx#nanoid" target="_blank">nanoid</a>，但你可以实现自己的 ID 生成逻辑。</li>
 <li><code>serializeError(error: unknown) =&gt; any</code> 用你自己的序列化逻辑替换内部的 <code>miniSerializeError</code> 方法。</li>
 <li><code>getPendingMeta({ arg, requestId }, { getState, extra }): any</code>：一个创建将被合并到 <code>pendingAction.meta</code> 字段的对象的函数。</li>
 </ul>

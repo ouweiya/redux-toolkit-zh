@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.2.1">
 <title data-rh="true">缓存行为 | Redux Toolkit</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://ouweiya.github.io/redux-toolkit-zh/img/redux-logo-landscape.png"><meta data-rh="true" name="twitter:image" content="https://ouweiya.github.io/redux-toolkit-zh/img/redux-logo-landscape.png"><meta data-rh="true" property="og:url" content="https://ouweiya.github.io/redux-toolkit-zh/rtk-query/usage/cache-behavior"><meta data-rh="true" property="og:locale" content="zh_Hans"><meta data-rh="true" name="docusaurus_locale" content="zh-Hans"><meta data-rh="true" name="docsearch:language" content="zh-Hans"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="缓存行为 | Redux Toolkit"><meta data-rh="true" name="description" content="RTK Query &gt; Usage &gt; Cache Behavior: defaults, cache lifetimes, and tradeoffs"><meta data-rh="true" property="og:description" content="RTK Query &gt; Usage &gt; Cache Behavior: defaults, cache lifetimes, and tradeoffs"><link data-rh="true" rel="icon" href="/redux-toolkit-zh/img/favicon/favicon.ico"><link data-rh="true" rel="canonical" href="https://ouweiya.github.io/redux-toolkit-zh/rtk-query/usage/cache-behavior"><link data-rh="true" rel="alternate" href="https://ouweiya.github.io/redux-toolkit-zh/rtk-query/usage/cache-behavior" hreflang="zh-Hans"><link data-rh="true" rel="alternate" href="https://ouweiya.github.io/redux-toolkit-zh/rtk-query/usage/cache-behavior" hreflang="x-default"><link rel="stylesheet" href="/redux-toolkit-zh/assets/css/styles.b5dc1f15.css">
-<script src="/redux-toolkit-zh/assets/js/runtime~main.af9a33e3.js" defer="defer"></script>
+<script src="/redux-toolkit-zh/assets/js/runtime~main.cb5820e8.js" defer="defer"></script>
 <script src="/redux-toolkit-zh/assets/js/main.98c92f97.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -93,7 +93,7 @@
 </ul>
 <p>每个查询结果都会包含一个看起来像 <code>{id: 1}</code> 的 Todo 对象。</p>
 <p>在一个完全规范化的去重缓存中，只会存储这个 Todo 对象的一个副本。然而，RTK Query 在缓存中独立保存每个查询结果。所以，这会导致在 Redux 存储中缓存三个独立的 Todo 副本。然而，如果所有的端点都一致地提供相同的标签（如 <code>{type: &#x27;Todo&#x27;, id: 1}</code>），那么使该标签无效  将强制所有匹配的端点重新获取他们的数据以保持一致性。</p>
-<p>Redux 文档一直推荐<a href="https://redux.js.org/recipes/structuring-reducers/normalizing-state-shape" target="_blank" rel="noopener noreferrer">在规范化的查找表中保持数据</a>，以便轻松地通过 ID 找到项目并在存储中更新它们，而 <a href="/redux-toolkit-zh/api/createEntityAdapter">RTK 的 <code>createEntityAdapter</code></a> 被设计用来帮助管理规范化的状态。这些概念仍然有价值，不会消失。然而，如果你正在使用 RTK Query 来管理缓存数据，那么你自己操作数据的需求就会减少。</p>
+<p>Redux 文档一直推荐<a href="https://cn.redux.js.org/recipes/structuring-reducers/normalizing-state-shape" target="_blank" rel="noopener noreferrer">在规范化的查找表中保持数据</a>，以便轻松地通过 ID 找到项目并在存储中更新它们，而 <a href="/redux-toolkit-zh/api/createEntityAdapter">RTK 的 <code>createEntityAdapter</code></a> 被设计用来帮助管理规范化的状态。这些概念仍然有价值，不会消失。然而，如果你正在使用 RTK Query 来管理缓存数据，那么你自己操作数据的需求就会减少。</p>
 <p>这里还有一些可以帮助的额外点：</p>
 <ul>
 <li>生成的查询钩子有一个 <a href="/redux-toolkit-zh/rtk-query/api/created-api/hooks#selectfromresult"><code>selectFromResult</code> 选项</a>，允许组件从查询结果中读取单个数据片段。例如，一个 <code>&lt;TodoList&gt;</code> 组件可能会调用 <code>useTodosQuery()</code>，每个单独的 <code>&lt;TodoListItem&gt;</code> 可以使用相同的查询钩子，但从结果中选择以获取正确的 todo 对象。</li>
@@ -101,7 +101,7 @@
 </ul>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="更多信息">更多信息<a href="#更多信息" class="hash-link" aria-label="更多信息的直接链接" title="更多信息的直接链接">​</a></h3>
 <ul>
-<li><a href="https://www.reddit.com/r/reactjs/comments/my9vrq/redux_toolkit_v16_alpha1_rtk_query_apis/gvxi5t7/" target="_blank" rel="noopener noreferrer">Reddit: 讨论为什么 RTKQ 没有规范化的缓存，以及权 衡</a></li>
+<li><a href="https://www.reddit.com/r/reactjs/comments/my9vrq/redux_toolkit_v16_alpha1_rtk_query_apis/gvxi5t7/" target="_blank" rel="noopener noreferrer">Reddit: 讨论为什么 RTKQ 没有规范化的缓存，以及 权衡</a></li>
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="示例">示例<a href="#示例" class="hash-link" aria-label="示例的直接链接" title="示例的直接链接">​</a></h2>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="缓存订阅生命周期演示">缓存订阅生命周期演示<a href="#缓存订阅生命周期演示" class="hash-link" aria-label="缓存订阅生命周期演示的直接链接" title="缓存订阅生命周期演示的直接链接">​</a></h3>

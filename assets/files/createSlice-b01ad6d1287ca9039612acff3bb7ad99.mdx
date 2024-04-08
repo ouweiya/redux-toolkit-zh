@@ -1,0 +1,657 @@
+---
+id: createSlice
+title: 创建切片
+sidebar_label: 创建切片
+hide_title: true
+---
+
+&nbsp;
+
+# `createSlice`
+
+这是一个接受初始状态、一个包含 reducer 函数的对象和一个 "slice 名称" 的函数，
+并自动生成与 reducer 和状态对应的 action 创建器和 action 类型。
+
+这个 API 是编写 Redux 逻辑的标准方法。
+
+在内部，它使用 [`createAction`](./createAction.mdx) 和 [`createReducer`](./createReducer.mdx)，所以
+你也可以使用 [Immer](../usage/immer-reducers.md) 来编写 "变异" 的不可变更新：
+
+```ts
+import { createSlice } from '@reduxjs/toolkit'
+import type { PayloadAction } from '@reduxjs/toolkit'
+
+interface CounterState {
+  value: number
+}
+
+const initialState = { value: 0 } satisfies CounterState as CounterState
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState,
+  reducers: {
+    increment(state) {
+      state.value++
+    },
+    decrement(state) {
+      state.value--
+    },
+    incrementByAmount(state, action: PayloadAction<number>) {
+      state.value += action.payload
+    },
+  },
+})
+
+export const { increment, decrement, incrementByAmount } = counterSlice.actions
+export default counterSlice.reducer
+```
+
+## 参数
+
+`createSlice` 接受一个单一的配置对象参数，具有以下选项：
+
+```ts no-transpile
+function createSlice({
+    // 一个用于 action 类型的名称
+    name: string,
+    // reducer 的初始状态
+    initialState: State,
+    // 一个包含 "case reducers" 的对象。键名将用于生成 actions。
+    reducers: Record<string, ReducerFunction | ReducerAndPrepareObject>,
+    // 一个用于添加更多 reducers 的 "builder callback" 函数
+    extraReducers?: (builder: ActionReducerMapBuilder<State>) => void,
+    // slice reducer 的位置偏好，由 `combineSlices` 和 `slice.selectors` 使用。默认为 `name`。
+    reducerPath?: string,
+    // 一个接收 slice 的状态作为其第一个参数的 selectors 对象。
+    selectors?: Record<string, (sliceState: State, ...args: any[]) => any>,
+})
+```
+
+### `initialState`
+
+这个 slice 的状态的初始值。
+
+这也可以是一个 "lazy initializer" 函数，当被调用时应返回一个初始状态值。当 reducer 被调用并且其状态值为 `undefined` 时，将使用这个函数，这主要用于像从 `localStorage` 读取初始状态这样的情况。
+
+### `name`
+
+这个 slice 的状态的字符串名称。生成的 action 类型常量将使用这个作为前缀。
+
+### `reducers`
+
+一个包含 Redux "case reducer" 函数的对象（旨在处理特定 action 类型的函数，相当于 switch 中的单个 case 语句）。
+
+对象中的键将用于生成字符串 action 类型常量，当它们被派发时，这些将显示在 Redux DevTools Extension 中。此外，如果应用的其他部分恰好派发了具有完全相同类型字符串的 action，将运行相应的 reducer。因此，你应该给函数取描述性的名称。
+
+这个对象将传递给 [`createReducer`](./createReducer.mdx)，所以 reducers 可以安全地 "变异" 它们被给予的状态。
+
+```ts
+import { createSlice } from '@reduxjs/toolkit'
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: 0,
+  reducers: {
+    increment: (state) => state + 1,
+  },
+})
+// 将处理 action 类型 `'counter/increment'`
+```
+
+#### 自定义生成的 Action 创建器
+
+如果你需要通过 [`prepare callback`](./createAction.mdx#using-prepare-callbacks-to-customize-action-contents) 自定义 action 创建器的 payload 值的创建，那么 `reducers` 参数对象的相应字段的值应该是一个对象而不是一个函数。这个对象必须包含两个属性：`reducer` 和 `prepare`。`reducer` 字段的值应该是 case reducer 函数，而 `prepare` 字段的值应该是 prepare callback 函数：
+
+```ts
+import { createSlice, nanoid } from '@reduxjs/toolkit'
+import type { PayloadAction } from '@reduxjs/toolkit'
+
+interface Item {
+  id: string
+  text: string
+}
+
+const todosSlice = createSlice({
+  name: 'todos',
+  initialState: [] as Item[],
+  reducers: {
+    addTodo: {
+      reducer: (state, action: PayloadAction<Item>) => {
+        state.push(action.payload)
+      },
+      prepare: (text: string) => {
+        const id = nanoid()
+        return { payload: { id, text } }
+      },
+    },
+  },
+})
+```
+
+### `reducers` "creator callback" 符号
+
+另外，`reducers` 字段可以是一个接收 "create" 对象的回调。
+
+这样做的主要好处是你可以在你的 slice 中创建 [async thunks](./createAsyncThunk)（尽管出于 bundle 大小的原因，你需要一些设置来实现这一点）。对于 prepared reducers，类型也稍微简化了。
+
+```ts title="Creator callback for reducers"
+import { createSlice, nanoid } from '@reduxjs/toolkit'
+
+interface Item {
+  id: string
+  text: string
+}
+
+interface TodoState {
+  loading: boolean
+  todos: Item[]
+}
+
+const todosSlice = createSlice({
+  name: 'todos',
+  initialState: {
+    loading: false,
+    todos: [],
+  } satisfies TodoState as TodoState,
+  reducers: (create) => ({
+    deleteTodo: create.reducer<number>((state, action) => {
+      state.todos.splice(action.payload, 1)
+    }),
+    addTodo: create.preparedReducer(
+      (text: string) => {
+        const id = nanoid()
+        return { payload: { id, text } }
+      },
+      // action 类型是从 prepare 回调中推断出来的
+      (state, action) => {
+        state.todos.push(action.payload)
+      },
+    ),
+    fetchTodo: create.asyncThunk(
+      async (id: string, thunkApi) => {
+        const res = await fetch(`myApi/todos?id=${id}`)
+        return (await res.json()) as Item
+      },
+      {
+        pending: (state) => {
+          state.loading = true
+        },
+        rejected: (state, action) => {
+          state.loading = false
+        },
+        fulfilled: (state, action) => {
+          state.loading = false
+          state.todos.push(action.payload)
+        },
+      },
+    ),
+  }),
+})
+
+export const { addTodo, deleteTodo, fetchTodo } = todosSlice.actions
+```
+
+#### 创建方法
+
+#### `create.reducer`
+
+一个标准的 slice case reducer。
+
+**参数**
+
+- **reducer** 要使用的 slice case reducer。
+
+```ts no-transpile
+create.reducer<Todo>((state, action) => {
+  state.todos.push(action.payload)
+})
+```
+
+#### `create.preparedReducer`
+
+一个[预处理](#customizing-generated-action-creators)的 reducer，用于自定义 action creator。
+
+**参数**
+
+- **prepareAction** [`prepare 回调`](./createAction#using-prepare-callbacks-to-customize-action-contents)。
+- **reducer** 要使用的 slice case reducer。
+
+传递给 case reducer 的 action 将从 prepare 回调的返回值中推断出来。
+
+```ts no-transpile
+create.preparedReducer(
+  (text: string) => {
+    const id = nanoid()
+    return { payload: { id, text } }
+  },
+  (state, action) => {
+    state.todos.push(action.payload)
+  },
+)
+```
+
+#### `create.asyncThunk`
+
+创建一个异步 thunk，而不是 action creator。
+
+:::caution 设置
+
+为了避免默认情况下将 `createAsyncThunk` 拉入 `createSlice` 的包大小，使用 `create.asyncThunk` 需要一些额外的设置。
+
+从 RTK 导出的 `createSlice` 版本如果调用 `create.asyncThunk` 会抛出错误。
+
+相反，导入 `buildCreateSlice` 和 `asyncThunkCreator`，并创建你自己的 `createSlice` 版本：
+
+```ts
+import { buildCreateSlice, asyncThunkCreator } from '@reduxjs/toolkit'
+
+export const createAppSlice = buildCreateSlice({
+  creators: { asyncThunk: asyncThunkCreator },
+})
+```
+
+然后根据需要导入这个 `createAppSlice`，而不是从 RTK 导出的版本。
+
+:::
+
+**参数**
+
+- **payloadCreator** thunk 的 [payload 创建者](./createAsyncThunk#payloadcreator)。
+- **config** 配置对象。 (可选)
+
+配置对象可以包含每个[生命周期动作](./createAsyncThunk#promise-lifecycle-actions)（`pending`，`fulfilled`，和 `rejected`）的 case reducer，以及一个 `settled` reducer，它将在 fulfilled 和 rejected 动作都运行（注意，这将在任何提供的 `fulfilled`/`rejected` reducers 之后运行。从概念上讲，它可以被认为是一个 `finally` 块。）。
+
+每个 case reducer 将被附加到 slice 的 `caseReducers` 对象上，例如 `slice.caseReducers.fetchTodo.fulfilled`。
+
+配置对象还可以包含[`选项`](./createAsyncThunk#options)。
+
+```ts no-transpile
+create.asyncThunk(
+  async (id: string, thunkApi) => {
+    const res = await fetch(`myApi/todos?id=${id}`)
+    return (await res.json()) as Item
+  },
+  {
+    pending: (state) => {
+      state.loading = true
+    },
+    rejected: (state, action) => {
+      state.error = action.payload ?? action.error
+    },
+    fulfilled: (state, action) => {
+      state.todos.push(action.payload)
+    },
+    settled: (state, action) => {
+      state.loading = false
+    }
+    options: {
+      idGenerator: uuid,
+    },
+  }
+)
+```
+
+:::note
+
+`create.asyncThunk` 的类型工作方式与 [`createAsyncThunk`](../usage/usage-with-typescript#createasyncthunk) 相同，但有一个关键的区别。
+
+`state` 和/或 `dispatch` 的类型 _不能_ 作为 `ThunkApiConfig` 的一部分提供，因为这会导致循环类型。
+
+相反，需要在需要的时候断言类型 - `getState() as RootState`。你也可以为 payload 函数包含一个明确的返回类型，以打破循环类型推断周期。
+
+```ts no-transpile
+create.asyncThunk<Todo, string, { rejectValue: { error: string } }>(
+  // highlight-start
+  // 可能需要包含一个明确的返回类型
+  async (id: string, thunkApi): Promise<Todo> => {
+    // 手动为 `getState` 和 `dispatch` 断言类型
+    const state = thunkApi.getState() as RootState
+    const dispatch = thunkApi.dispatch as AppDispatch
+    // highlight-end
+    try {
+      const todo = await fetchTodo()
+      return todo
+    } catch (e) {
+      throw thunkApi.rejectWithValue({
+        error: 'Oh no!',
+      })
+    }
+  },
+)
+```
+
+对于常见的 thunk API 配置选项，提供了一个 [`withTypes` helper](../usage/usage-with-typescript#defining-a-pre-typed-createasyncthunk)：
+
+```ts no-transpile
+reducers: (create) => {
+  const createAThunk = create.asyncThunk.withTypes<{
+    rejectValue: { error: string }
+  }>()
+
+  return {
+    fetchTodo: createAThunk<Todo, string>(async (id, thunkApi) => {
+      throw thunkApi.rejectWithValue({
+        error: 'Oh no!',
+      })
+    }),
+    fetchTodos: createAThunk<Todo[], string>(async (id, thunkApi) => {
+      throw thunkApi.rejectWithValue({
+        error: 'Oh no, not again!',
+      })
+    }),
+  }
+}
+```
+
+:::
+
+### `extraReducers`
+
+从概念上讲，每个 slice reducer "拥有" 它的 state 切片。在 `reducers` 内部定义的更新逻辑，和基于这些生成的 action 类型之间也有一个自然的对应关系。
+
+然而，有很多时候，Redux slice 可能也需要响应其他地方定义的 action 类型来更新自己的 state（例如，当派发一个 "用户登出" 的 action 时，清除许多不同类型的数据）。这可以包括由另一个 `createSlice` 调用定义的 action 类型，由 `createAsyncThunk` 生成的动作，RTK Query 端点匹配器，或任何其他动作。此外，Redux 的一个关键概念是，许多 slice reducer 可以独立地响应同一 action 类型。
+
+**`extraReducers` 允许 `createSlice` 响应和更新其自身的 state，以响应除了它生成的类型之外的其他 action 类型。**
+
+与 `reducers` 字段一样，`extraReducers` 中的每个 case reducer 都[被 Immer 包装，并可以使用 "mutating" 语法来安全地更新 state](../usage/immer-reducers.md)。
+
+然而，与 `reducers` 字段不同，`extraReducers` 内的每个单独的 case reducer _不会_ 生成新的 action 类型或 action creator。
+
+如果 `reducers` 和 `extraReducers` 的两个字段恰好以相同的 action 类型字符串结束，那么 `reducers` 的函数将被用来处理该 action 类型。
+
+#### `extraReducers` "构建器回调"表示法
+
+类似于`createReducer`，`extraReducers`字段使用"构建器回调"表示法来定义特定动作类型的处理器，匹配一系列动作，或处理默认情况。这在概念上类似于switch语句，但具有更好的TS支持，因为它可以从提供的动作创建器中推断出动作类型。它对于处理由`createAction`和`createAsyncThunk`产生的动作特别有用。
+
+[examples](docblock://createSlice.ts?token=CreateSliceOptions.extraReducers)
+
+请参阅[`createReducer`参考的"构建器回调表示法"部分](./createReducer.mdx#usage-with-the-builder-callback-notation)以了解如何使用`builder.addCase`，`builder.addMatcher`和`builder.addDefaultCase`。
+
+### `reducerPath`
+
+表示切片应位于何处的首选项。默认为[`name`](#name)。
+
+这被`combineSlices`和默认生成的`slice.selectors`使用。
+
+### `selectors`
+
+一组接收切片状态作为其第一个参数的选择器，以及任何其他参数。
+
+每个选择器在结果的[`selectors`](#selectors-1)对象中都将有一个对应的键。
+
+:::caution 循环类型
+
+选择器使用其他选择器是很常见的。这对于切片选择器仍然可能，但是定义没有返回类型的选择器可能会导致循环类型推断问题：
+
+```ts no-transpile
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 },
+  reducers: {},
+  selectors: {
+    selectValue: (state) => state.value,
+    // highlight-start
+    // 这创建了一个循环，因为它正在从我们在这里创建的对象中推断类型
+    selectTimes: (state, times = 1) =>
+      counterSlice.getSelectors().selectValue(state) * times,
+    // highlight-end
+  },
+})
+```
+
+通过为选择器提供显式返回类型，可以修复这个循环：
+
+```ts no-transpile
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 },
+  reducers: {},
+  selectors: {
+    selectValue: (state) => state.value,
+    // highlight-start
+    // 显式返回类型意味着循环被打破
+    selectTimes: (state, times = 1): number =>
+      counterSlice.getSelectors().selectValue(state) * times,
+    // highlight-end
+  },
+})
+```
+
+当使用切片的`asyncThunk`创建器时，也可能遇到这个限制。
+同样，通过在链中的某处明确提供类型并打破循环，可以解决问题。
+
+```ts no-transpile
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 },
+  reducers: (create) => ({
+    getCountData: create.asyncThunk(async (_arg, { getState }) => {
+      const currentCount = counterSlice.selectors.selectValue(
+        getState() as RootState,
+      )
+      // highlight-start
+      // 这将导致循环类型，但类型注解打破了循环
+      const result: Response = await fetch('api/' + currentCount)
+      // highlight-end
+      return result.json()
+    }),
+  }),
+  selectors: {
+    selectValue: (state) => state.value,
+  },
+})
+```
+
+:::
+
+## 返回值
+
+`createSlice`将返回一个看起来像这样的对象：
+
+```ts no-transpile
+{
+    name: string,
+    reducer: ReducerFunction,
+    actions: Record<string, ActionCreator>,
+    caseReducers: Record<string, CaseReducer>,
+    getInitialState: () => State,
+    reducerPath: string,
+    selectSlice: Selector;
+    selectors: Record<string, Selector>,
+    getSelectors: (selectState: (rootState: RootState) => State) => Record<string, Selector>
+    injectInto: (injectable: Injectable, config?: InjectConfig & { reducerPath?: string }) => InjectedSlice
+}
+```
+
+在`reducers`参数中定义的每个函数都将有一个使用[`createAction`](./createAction.mdx)生成的对应动作创建器，并在结果的`actions`字段中使用相同的函数名包含。
+
+生成的`reducer`函数适合作为"切片reducer"传递给Redux的`combineReducers`函数。
+
+你可能会考虑解构动作创建器并单独导出它们，以便在更大的代码库中搜索引用。
+
+通过`caseReducers`返回字段可以访问传递给`reducers`参数的函数。这对于测试或直接访问内联创建的reducer特别有用。
+
+结果的函数`getInitialState`提供对给定切片的初始状态值的访问。如果提供了一个懒状态初始化器，它将被调用并返回一个新值。
+
+`injectInto`创建了一个知道它已被注入的切片实例 - 参见[`combineSlices`](./combineSlices#slice-integration)。
+
+:::note
+结果对象在概念上类似于
+["Redux duck"代码结构](https://cn.redux.js.org/faq/code-structure#what-should-my-file-structure-look-like-how-should-i-group-my-action-creators-and-reducers-in-my-project-where-should-my-selectors-go)。
+你使用的实际代码结构取决于你，但值得记住的是，动作不仅限于单个切片。
+reducer逻辑的任何部分都可以（并且应该！）响应任何派发的动作。
+:::
+
+### 选择器
+
+切片选择器被编写为期望切片的状态作为它们的第一个参数，但是切片可能位于存储的根状态的任何地方。
+
+因此，有两种获取最终选择器的方法：
+
+#### `selectors`
+
+最常见的是，切片可靠地挂载在其[`reducerPath`](#reducerPath)下。
+
+根据此，切片有一个`selectSlice`选择器附加，该选择器假定切片位于`rootState[slice.reducerPath]`下。
+
+然后`slice.selectors`使用此选择器来包装提供的每个选择器。
+
+```ts
+import { createSlice } from '@reduxjs/toolkit'
+
+interface CounterState {
+  value: number
+}
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 } satisfies CounterState as CounterState,
+  reducers: {
+    // 省略
+  },
+  selectors: {
+    selectValue: (sliceState) => sliceState.value,
+  },
+})
+
+console.log(counterSlice.selectSlice({ counter: { value: 2 } })) // { value: 2 }
+
+const { selectValue } = counterSlice.selectors
+
+console.log(selectValue({ counter: { value: 2 } })) // 2
+```
+
+:::note
+
+原始选择器被附加到包装选择器上作为`.unwrapped`。例如：
+
+```ts
+import { createSlice, createSelector } from '@reduxjs/toolkit'
+
+interface CounterState {
+  value: number
+}
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 } satisfies CounterState as CounterState,
+  reducers: {
+    // 省略
+  },
+  selectors: {
+    selectDouble: createSelector(
+      (sliceState: CounterState) => sliceState.value,
+      (value) => value * 2,
+    ),
+  },
+})
+
+const { selectDouble } = counterSlice.selectors
+
+console.log(selectDouble({ counter: { value: 2 } })) // 4
+console.log(selectDouble({ counter: { value: 3 } })) // 6
+console.log(selectDouble.unwrapped.recomputations) // 2
+```
+
+:::
+
+#### `getSelectors`
+
+`slice.getSelectors` 是一个接受单个参数 `selectState` 回调函数的方法。这个函数应该接收存储的根状态（或者你期望调用结果选择器的任何内容）并返回切片状态。
+
+```ts no-transpile
+const { selectValue } = counterSlice.getSelectors(
+  (rootState: RootState) => rootState.aCounter,
+)
+
+console.log(selectValue({ aCounter: { value: 2 } })) // 2
+```
+
+如果没有传递 `selectState` 回调，选择器将按原样返回 - 期望切片状态作为它们的第一个参数（与调用 `slice.getSelectors(state => state)` 相同）。
+
+```ts no-transpile
+const { selectValue } = counterSlice.getSelectors()
+
+console.log(selectValue({ value: 2 })) // 2
+```
+
+:::note
+[`slice.selectors`](#selectors-2) 对象等同于调用
+
+```ts no-transpile
+const { selectValue } = counterSlice.getSelectors(counterSlice.selectSlice)
+// 或者
+const { selectValue } = counterSlice.getSelectors(
+  (state: RootState) => state[counterSlice.reducerPath],
+)
+```
+
+:::
+
+## 示例
+
+```ts
+import { createSlice, createAction, configureStore } from '@reduxjs/toolkit'
+import type { PayloadAction } from '@reduxjs/toolkit'
+import { combineReducers } from 'redux'
+
+const incrementBy = createAction<number>('incrementBy')
+const decrementBy = createAction<number>('decrementBy')
+
+const counter = createSlice({
+  name: 'counter',
+  initialState: 0 satisfies number as number,
+  reducers: {
+    increment: (state) => state + 1,
+    decrement: (state) => state - 1,
+    multiply: {
+      reducer: (state, action: PayloadAction<number>) => state * action.payload,
+      prepare: (value?: number) => ({ payload: value || 2 }), // 如果负载是一个假值，则回退
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(incrementBy, (state, action) => {
+      return state + action.payload
+    })
+    builder.addCase(decrementBy, (state, action) => {
+      return state - action.payload
+    })
+  },
+})
+
+const user = createSlice({
+  name: 'user',
+  initialState: { name: '', age: 20 },
+  reducers: {
+    setUserName: (state, action) => {
+      state.name = action.payload // 使用 immer 随意变更状态
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(counter.actions.increment, (state, action) => {
+      state.age += 1
+    })
+  },
+})
+
+const store = configureStore({
+  reducer: {
+    counter: counter.reducer,
+    user: user.reducer,
+  },
+})
+
+store.dispatch(counter.actions.increment())
+// -> { counter: 1, user: {name : '', age: 21} }
+store.dispatch(counter.actions.increment())
+// -> { counter: 2, user: {name: '', age: 22} }
+store.dispatch(counter.actions.multiply(3))
+// -> { counter: 6, user: {name: '', age: 22} }
+store.dispatch(counter.actions.multiply())
+// -> { counter: 12, user: {name: '', age: 22} }
+console.log(counter.actions.decrement.type)
+// -> "counter/decrement"
+store.dispatch(user.actions.setUserName('eric'))
+// -> { counter: 12, user: { name: 'eric', age: 22} }
+```
