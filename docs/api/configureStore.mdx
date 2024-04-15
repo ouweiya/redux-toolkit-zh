@@ -143,13 +143,13 @@ DevTools 扩展文档中的 [`EnhancerOptions`](https://github.com/reduxjs/redux
 
 #### `trace`
 
-Redux DevTools 扩展最近添加了[支持显示操作堆栈跟踪](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/Features/Trace.md)的功能，这可以显示每个操作被分派的确切位置。
-捕获这些跟踪可能会增加一些开销，因此 DevTools 扩展允许用户通过[设置 'trace' 参数](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/API/Arguments.md#trace)来配置是否捕获操作堆栈跟踪。
+Redux DevTools 扩展最近添加了 [支持显示操作堆栈跟踪](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/Features/Trace.md) 的功能，这可以显示每个操作被分派的确切位置。
+捕获这些跟踪可能会增加一些开销，因此 DevTools 扩展允许用户通过 [设置 'trace' 参数](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/API/Arguments.md#trace) 来配置是否捕获操作堆栈跟踪。
 如果通过传递 `true` 或一个对象启用了 DevTools，那么 `configureStore` 将默认在开发模式下启用捕获操作堆栈跟踪。
 
 ### `preloadedState`
 
-一个可选的初始状态值，可以传递给 Redux 的 `createStore` 函数。
+一个可选的初始状态值，它会被传递给 Redux 的 `createStore` 函数。
 
 ### `enhancers`
 
