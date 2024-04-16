@@ -1,5 +1,5 @@
 ---
-title: Beginner Tutorial
+title: 初级教程
 hide_title: true
 ---
 

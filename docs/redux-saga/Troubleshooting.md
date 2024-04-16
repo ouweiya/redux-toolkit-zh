@@ -1,6 +1,6 @@
 ---
 id: Troubleshooting
-title: Troubleshooting
+title: 故障排除
 hide_title: true
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Future Actions
+title: 未来的操作
 hide_title: true
 ---
 

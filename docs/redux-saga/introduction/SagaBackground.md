@@ -1,5 +1,5 @@
 ---
-title: Saga Background
+title: Saga 背景
 hide_title: true
 ---
 

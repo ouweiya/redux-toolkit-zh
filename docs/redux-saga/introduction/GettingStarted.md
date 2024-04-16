@@ -1,5 +1,5 @@
 ---
-title: Getting Started
+title: 入门指南
 hide_title: true
 ---
 

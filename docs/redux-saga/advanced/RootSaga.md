@@ -1,5 +1,5 @@
 ---
-title: Root Saga
+title: 根 Saga
 hide_title: true
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Declarative Effects
+title: 声明式效果
 hide_title: true
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Dispatching Actions
+title: 分发操作
 hide_title: true
 ---
 

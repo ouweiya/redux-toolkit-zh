@@ -1,6 +1,6 @@
 ---
 id: ExternalResources
-title: External Resources
+title: 外部资源
 hide_title: true
 ---
 

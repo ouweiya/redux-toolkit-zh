@@ -1,5 +1,5 @@
 ---
-title: Racing Effects
+title: 竞态效应
 hide_title: true
 ---
 

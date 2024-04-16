@@ -1,16 +1,16 @@
 ---
-title: About
+title: 关于
 hide_title: true
 ---
 
-# About Redux-Saga
+# 关于 Redux-Saga
 
-`redux-saga` is a library that aims to make application side effects (i.e. asynchronous things like data fetching and impure things like accessing the browser cache) easier to manage, more efficient to execute, easy to test, and better at handling failures.
+`redux-saga` 是一个库，旨在使应用程序的副作用（例如异步操作如数据获取和不纯净的操作如访问浏览器缓存）更易于管理，执行更高效，易于测试，并且在处理失败时更优秀。
 
-The mental model is that a saga is like a separate thread in your application that's solely responsible for side effects. `redux-saga` is a redux middleware, which means this thread can be started, paused and cancelled from the main application with normal redux actions, it has access to the full redux application state and it can dispatch redux actions as well.
+其思维模型是，saga 就像你的应用程序中的一个单独线程，专门负责副作用。`redux-saga` 是一个 redux 中间件，这意味着这个线程可以从主应用程序通过正常的 redux 动作启动、暂停和取消，它可以访问完整的 redux 应用程序状态，并且可以派发 redux 动作。
 
-It uses an ES6 feature called Generators to make those asynchronous flows easy to read, write and test. *(if you're not familiar with them [here are some introductory links][ext-links])* By doing so, these asynchronous flows look like your standard synchronous JavaScript code. (kind of like `async`/`await`, but generators have a few more awesome features we need)
+它使用了一个名为 Generators 的 ES6 特性，使得这些异步流程易于阅读、编写和测试。*(如果你对它们不熟悉，[这里有一些入门链接][ext-links])* 通过这样做，这些异步流程看起来就像你的标准同步 JavaScript 代码。（有点像 `async`/`await`，但是 generators 有一些我们需要的更棒的特性）
 
-You might've used `redux-thunk` before to handle your data fetching. Contrary to redux thunk, you don't end up in callback hell, you can test your asynchronous flows easily and your actions stay pure.
+你可能之前用过 `redux-thunk` 来处理你的数据获取。与 redux thunk 不同，你不会陷入回调地狱，你可以轻松测试你的异步流程，而且你的动作保持纯净。
 
 [ext-links]: https://redux-saga.js.org/docs/ExternalResources.html

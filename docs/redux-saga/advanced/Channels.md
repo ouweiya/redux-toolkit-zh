@@ -1,5 +1,5 @@
 ---
-title: Channels
+title: 通道
 hide_title: true
 ---
 

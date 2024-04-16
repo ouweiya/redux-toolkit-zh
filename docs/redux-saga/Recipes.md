@@ -1,6 +1,6 @@
 ---
 id: recipes
-title: Recipes
+title: 食谱
 hide_title: true
 ---
 
