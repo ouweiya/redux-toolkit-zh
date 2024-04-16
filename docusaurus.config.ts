@@ -31,7 +31,7 @@ const config: Config = {
           routeBasePath: "/",
           editUrl: "https://github.com/ouweiya/redux-toolkit-zh/tree/master/",
           include: [
-            "{api,assets,introduction,migrations,rtk-query,tutorials,usage,reselect}/**/*.{md,mdx}",
+            "{api,assets,introduction,rtk-query,tutorials,usage,reselect,redux-saga}/**/*.{md,mdx}",
           ],
           remarkPlugins: [
             [
@@ -92,7 +92,13 @@ const config: Config = {
           type: "docSidebar",
           position: "right",
           sidebarId: "reselect",
-          label: "Reselect",
+          label: "Reselect 中文",
+        },
+        {
+          type: "docSidebar",
+          position: "right",
+          sidebarId: "reduxSaga",
+          label: "Redux-Saga 中文",
         },
       ],
     },

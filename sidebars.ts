@@ -197,6 +197,71 @@ const sidebars: SidebarsConfig = {
     "reselect/external-references",
     "reselect/related-projects",
   ],
+
+  reduxSaga: [
+    {
+      type: "doc",
+      id: "redux-saga/About",
+    },
+    {
+      type: "category",
+      label: "Introduction",
+      items: [
+        "redux-saga/introduction/GettingStarted",
+        "redux-saga/introduction/BeginnerTutorial",
+        "redux-saga/introduction/SagaBackground",
+      ],
+    },
+    {
+      type: "category",
+      label: "Basics Concepts",
+      items: [
+        "redux-saga/basics/DeclarativeEffects",
+        "redux-saga/basics/DispatchingActions",
+        "redux-saga/basics/Effect",
+        "redux-saga/basics/ErrorHandling",
+        "redux-saga/basics/UsingSagaHelpers",
+      ],
+    },
+    {
+      type: "category",
+      label: "Advanced Concepts",
+      items: [
+        "redux-saga/advanced/Channels",
+        "redux-saga/advanced/ComposingSagas",
+        "redux-saga/advanced/Concurrency",
+        "redux-saga/advanced/ForkModel",
+        "redux-saga/advanced/FutureActions",
+        "redux-saga/advanced/NonBlockingCalls",
+        "redux-saga/advanced/RacingEffects",
+        "redux-saga/advanced/RootSaga",
+        "redux-saga/advanced/RunningTasksInParallel",
+        "redux-saga/advanced/TaskCancellation",
+        "redux-saga/advanced/Testing",
+        "redux-saga/advanced/UsingRunSaga",
+      ],
+    },
+    {
+      type: "doc",
+      id: "redux-saga/recipes",
+    },
+    {
+      type: "doc",
+      id: "redux-saga/ExternalResources",
+    },
+    {
+      type: "doc",
+      id: "redux-saga/Troubleshooting",
+    },
+    {
+      type: "doc",
+      id: "redux-saga/Glossary",
+    },
+    {
+      type: "doc",
+      id: "redux-saga/api",
+    },
+  ],
 };
 
 export default sidebars;
