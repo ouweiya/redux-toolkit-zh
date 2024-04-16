@@ -3,13 +3,11 @@ title: 分发操作
 hide_title: true
 ---
 
-# Dispatching actions to the store
+# 向存储库派发操作
 
-Taking the previous example further, let's say that after each save, we want to dispatch some action
-to notify the Store that the fetch has succeeded (we'll omit the failure case for the moment).
+进一步扩展上一个例子，假设每次保存后，我们想要派发一些操作来通知存储库获取操作已经成功（我们暂时忽略失败的情况）。
 
-We could pass the Store's `dispatch` function to the Generator. Then the
-Generator could invoke it after receiving the fetch response:
+我们可以将存储库的 `dispatch` 函数传递给生成器。然后生成器在接收到获取响应后调用它：
 
 ```javascript
 // ...
@@ -20,17 +18,11 @@ function* fetchProducts(dispatch) {
 }
 ```
 
-However, this solution has the same drawbacks as invoking functions directly from inside the Generator (as discussed in the previous section). If we want to test that `fetchProducts` performs
-the dispatch after receiving the AJAX response, we'll need again to mock the `dispatch`
-function.
+然而，这种解决方案与直接从生成器内部调用函数的缺点是一样的（如前一节所讨论的）。如果我们想要测试 `fetchProducts` 在接收到 AJAX 响应后执行派发，我们将需要再次模拟 `dispatch` 函数。
 
-Instead, we need the same declarative solution. Create a plain JavaScript Object to instruct the
-middleware that we need to dispatch some action, and let the middleware perform the real
-dispatch. This way we can test the Generator's dispatch in the same way: by inspecting
-the yielded Effect and making sure it contains the correct instructions.
+相反，我们需要相同的声明式解决方案。创建一个普通的 JavaScript 对象来指示中间件我们需要派发一些操作，并让中间件执行真正的派发。这样我们可以以相同的方式测试生成器的派发：通过检查生成的效果并确保它包含正确的指令。
 
-The library provides, for this purpose, another function `put` which creates the dispatch
-Effect.
+为此目的，该库提供了另一个函数 `put`，用于创建派发效果。
 
 ```javascript
 import { call, put } from 'redux-saga/effects'
@@ -38,12 +30,12 @@ import { call, put } from 'redux-saga/effects'
 
 function* fetchProducts() {
   const products = yield call(Api.fetch, '/products')
-  // create and yield a dispatch Effect
+  // 创建并产生一个派发效果
   yield put({ type: 'PRODUCTS_RECEIVED', products })
 }
 ```
 
-Now, we can test the Generator easily as in the previous section
+现在，我们可以像在前一节中那样轻松地测试生成器
 
 ```javascript
 import { call, put } from 'redux-saga/effects'
@@ -51,25 +43,22 @@ import Api from '...'
 
 const iterator = fetchProducts()
 
-// expects a call instruction
+// 期望一个调用指令
 assert.deepEqual(
   iterator.next().value,
   call(Api.fetch, '/products'),
-  "fetchProducts should yield an Effect call(Api.fetch, './products')"
+  "fetchProducts 应该产生一个 Effect call(Api.fetch, './products')"
 )
 
-// create a fake response
+// 创建一个假的响应
 const products = {}
 
-// expects a dispatch instruction
+// 期望一个派发指令
 assert.deepEqual(
   iterator.next(products).value,
   put({ type: 'PRODUCTS_RECEIVED', products }),
-  "fetchProducts should yield an Effect put({ type: 'PRODUCTS_RECEIVED', products })"
+  "fetchProducts 应该产生一个 Effect put({ type: 'PRODUCTS_RECEIVED', products })"
 )
 ```
 
-Note how we pass the fake response to the Generator via its `next` method. Outside the
-middleware environment, we have total control over the Generator, we can simulate a
-real environment by mocking results and resuming the Generator with them. Mocking
-data is a lot easier than mocking functions and spying calls.
+注意我们如何通过生成器的 `next` 方法传递假响应。在中间件环境之外，我们对生成器有完全的控制，我们可以通过模拟结果并用它们恢复生成器来模拟真实环境。模拟数据比模拟函数和监视调用要容易得多。

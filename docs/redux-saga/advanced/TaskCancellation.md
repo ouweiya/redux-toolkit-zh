@@ -3,15 +3,15 @@ title: 任务取消
 hide_title: true
 ---
 
-# Task cancellation
+# 任务取消
 
-We saw already an example of cancellation in the [Non blocking calls](NonBlockingCalls.md) section. In this section we'll review cancellation in more detail.
+我们已经在[非阻塞调用](NonBlockingCalls.md)部分看到了取消的例子。在这个部分，我们将更详细地回顾取消。
 
-Once a task is forked, you can abort its execution using `yield cancel(task)`.
+一旦一个任务被分叉，你可以使用 `yield cancel(task)` 来中止它的执行。
 
-To see how it works, let's consider a basic example: A background sync which can be started/stopped by some UI commands. Upon receiving a `START_BACKGROUND_SYNC` action, we fork a background task that will periodically sync some data from a remote server.
+为了看到它是如何工作的，让我们考虑一个基本的例子：一个可以通过一些UI命令启动/停止的后台同步。在接收到 `START_BACKGROUND_SYNC` 动作后，我们分叉一个后台任务，该任务将定期从远程服务器同步一些数据。
 
-The task will execute continually until a `STOP_BACKGROUND_SYNC` action is triggered. Then we cancel the background task and wait again for the next `START_BACKGROUND_SYNC` action.
+该任务将一直执行，直到触发 `STOP_BACKGROUND_SYNC` 动作。然后我们取消后台任务，并再次等待下一个 `START_BACKGROUND_SYNC` 动作。
 
 ```javascript
 import { take, put, call, fork, cancel, cancelled, delay } from 'redux-saga/effects'
@@ -27,29 +27,29 @@ function* bgSync() {
     }
   } finally {
     if (yield cancelled())
-      yield put(actions.requestFailure('Sync cancelled!'))
+      yield put(actions.requestFailure('同步取消！'))
   }
 }
 
 function* main() {
   while ( yield take('START_BACKGROUND_SYNC') ) {
-    // starts the task in the background
+    // 在后台启动任务
     const bgSyncTask = yield fork(bgSync)
 
-    // wait for the user stop action
+    // 等待用户停止动作
     yield take('STOP_BACKGROUND_SYNC')
-    // user clicked stop. cancel the background task
-    // this will cause the forked bgSync task to jump into its finally block
+    // 用户点击停止。取消后台任务
+    // 这将导致分叉的 bgSync 任务跳入其 finally 块
     yield cancel(bgSyncTask)
   }
 }
 ```
 
-In the above example, cancellation of `bgSyncTask` will use [Generator.prototype.return](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/return) to make the Generator jump directly to the finally block. Here you can use `yield cancelled()` to check if the Generator has been cancelled or not.
+在上面的例子中，`bgSyncTask` 的取消将使用 [Generator.prototype.return](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/return) 使生成器直接跳到 finally 块。在这里，你可以使用 `yield cancelled()` 来检查生成器是否已被取消。
 
-Cancelling a running task will also cancel the current Effect where the task is blocked at the moment of cancellation.
+取消正在运行的任务也将取消任务在取消时刻被阻塞的当前效果。
 
-For example, suppose that at a certain point in an application's lifetime, we have this pending call chain:
+例如，假设在应用程序的某个生命周期点，我们有这个待处理的调用链：
 
 ```javascript
 function* main() {
@@ -72,17 +72,17 @@ function* subtask2() {
 }
 ```
 
-`yield cancel(task)` triggers a cancellation on `subtask`, which in turn triggers a cancellation on `subtask2`.
+`yield cancel(task)` 触发了对 `subtask` 的取消，这反过来又触发了对 `subtask2` 的取消。
 
-So we saw that Cancellation propagates downward (in contrast returned values and uncaught errors propagates upward). You can see it as a *contract* between the caller (which invokes the async operation) and the callee (the invoked operation). The callee is responsible for performing the operation. If it has completed (either success or error) the outcome propagates up to its caller and eventually to the caller of the caller and so on. That is, callees are responsible for *completing the flow*.
+所以我们看到取消是向下传播的（与返回值和未捕获的错误向上传播形成对比）。你可以将其看作是调用者（调用异步操作的人）和被调用者（被调用的操作）之间的*契约*。被调用者负责执行操作。如果它已经完成（无论是成功还是错误），结果将向上传播到它的调用者，最终传播到调用者的调用者等等。也就是说，被调用者负责*完成流程*。
 
-Now if the callee is still pending and the caller decides to cancel the operation, it triggers a kind of a signal that propagates down to the callee (and possibly to any deep operations called by the callee itself). All deeply pending operations will be cancelled.
+现在，如果被调用者仍然在等待，而调用者决定取消操作，它会触发一种信号，这种信号会向下传播到被调用者（可能还有被调用者自己调用的任何深层操作）。所有深层等待的操作都将被取消。
 
-There is another direction where the cancellation propagates to as well: the joiners of a task (those blocked on a `yield join(task)`) will also be cancelled if the joined task is cancelled. Similarly, any potential callers of those joiners will be cancelled as well (because they are blocked on an operation that has been cancelled from outside).
+取消还有另一个方向可以传播：任务的 joiners（那些在 `yield join(task)` 上被阻塞的人）如果被 join 的任务被取消，他们也会被取消。同样，那些 joiners 的任何潜在调用者也将被取消（因为他们被阻塞在一个已经从外部被取消的操作上）。
 
-## Testing generators with fork effect
+## 测试带有 fork 效果的生成器
 
-When `fork` is called it starts the task in the background and also returns task object like we have learned previously. When testing this we have to use utility function `createMockTask`. Object returned from this function should be passed to next `next` call after fork test. Mock task can then be passed to `cancel` for example. Here is test for `main` generator which is on top of this page.
+当调用 `fork` 时，它会在后台启动任务，并返回任务对象，就像我们之前学过的那样。在测试这个时，我们必须使用 `createMockTask` 实用函数。这个函数返回的对象应该在 fork 测试后的下一个 `next` 调用中传递。然后可以将模拟任务传递给 `cancel`。这是对本页顶部的 `main` 生成器的测试。
 
 ```javascript
 import { createMockTask } from '@redux-saga/testing-utils';
@@ -113,18 +113,18 @@ describe('main', () => {
 });
 ```
 
-You can use a mock task's `setResult`, `setError`, and `cancel` methods to control its state. For example `mockTask.setResult(42)` will set its internal status to Done and any `join` effect given that task will return `42`.
+你可以使用模拟任务的 `setResult`，`setError` 和 `cancel` 方法来控制它的状态。例如 `mockTask.setResult(42)` 将设置其内部状态为 Done，任何给定该任务的 `join` 效果将返回 `42`。
 
-Calling `setResult`, `setError`, or `cancel` on a mock task after having already called one of them, trying to change its status a second time, will throw an error.
+在已经调用了其中一个之后，再次调用 `setResult`，`setError` 或 `cancel` 来尝试第二次改变其状态，将抛出错误。
 
-### Note
+### 注意
 
-It's important to remember that `yield cancel(task)` doesn't wait for the cancelled task to finish (i.e. to perform its finally block). The cancel effect behaves like fork. It returns as soon as the cancel was initiated. Once cancelled, a task should normally return as soon as it finishes its cleanup logic.
+重要的是要记住，`yield cancel(task)` 不会等待被取消的任务完成（即执行其 finally 块）。取消效果的行为就像 fork 一样。它会在取消开始后立即返回。一旦被取消，任务通常应该在完成其清理逻辑后尽快返回。
 
-## Automatic cancellation
+## 自动取消
 
-Besides manual cancellation there are cases where cancellation is triggered automatically
+除了手动取消，还有一些情况下会自动触发取消
 
-1. In a `race` effect. All race competitors, except the winner, are automatically cancelled.
+1. 在 `race` 效果中。所有的 race 竞争者，除了赢家，都会被自动取消。
 
-2. In a parallel effect (`yield all([...])`). The parallel effect is rejected as soon as one of the sub-effects is rejected (as implied by `Promise.all`). In this case, all the other sub-effects are automatically cancelled.
+2. 在并行效果中（`yield all([...])`）。一旦其中一个子效果被拒绝（如 `Promise.all` 所示），并行效果就会被拒绝。在这种情况下，所有其他的子效果都会被自动取消。

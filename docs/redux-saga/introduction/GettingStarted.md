@@ -3,25 +3,25 @@ title: 入门指南
 hide_title: true
 ---
 
-# Getting started
+# 入门指南
 
-## Install
+## 安装
 
 ```sh
 $ npm install redux-saga
 ```
 
-or
+或者
 
 ```sh
 $ yarn add redux-saga
 ```
 
-Alternatively, you may use the provided UMD builds directly in the `<script>` tag of an HTML page. See [this section](#using-umd-build-in-the-browser).
+另外，你也可以直接在HTML页面的`<script>`标签中使用提供的UMD构建。请参阅[此部分](#在浏览器中使用UMD构建)。
 
-## Usage Example
+## 使用示例
 
-Suppose we have a UI to fetch some user data from a remote server when a button is clicked. (For brevity, we'll just show the action triggering code.)
+假设我们有一个UI，当点击一个按钮时，它会从远程服务器获取一些用户数据。（为了简洁，我们只展示触发操作的代码。）
 
 ```javascript
 class UserComponent extends React.Component {
@@ -34,7 +34,7 @@ class UserComponent extends React.Component {
 }
 ```
 
-The Component dispatches a plain Object action to the Store. We'll create a Saga that watches for all `USER_FETCH_REQUESTED` actions and triggers an API call to fetch the user data.
+组件向Store派发一个普通的Object操作。我们将创建一个Saga，它会监视所有的`USER_FETCH_REQUESTED`操作，并触发一个API调用来获取用户数据。
 
 #### `sagas.js`
 
@@ -42,7 +42,7 @@ The Component dispatches a plain Object action to the Store. We'll create a Saga
 import { call, put, takeEvery, takeLatest } from 'redux-saga/effects'
 import Api from '...'
 
-// worker Saga: will be fired on USER_FETCH_REQUESTED actions
+// worker Saga: 将在 USER_FETCH_REQUESTED 操作上触发
 function* fetchUser(action) {
   try {
     const user = yield call(Api.fetchUser, action.payload.userId)
@@ -53,19 +53,18 @@ function* fetchUser(action) {
 }
 
 /*
-  Starts fetchUser on each dispatched `USER_FETCH_REQUESTED` action.
-  Allows concurrent fetches of user.
+  在每个派发的 `USER_FETCH_REQUESTED` 操作上启动 fetchUser。
+  允许并发获取用户。
 */
 function* mySaga() {
   yield takeEvery('USER_FETCH_REQUESTED', fetchUser)
 }
 
 /*
-  Alternatively you may use takeLatest.
+  或者你可以使用 takeLatest。
 
-  Does not allow concurrent fetches of user. If "USER_FETCH_REQUESTED" gets
-  dispatched while a fetch is already pending, that pending fetch is cancelled
-  and only the latest one will be run.
+  不允许并发获取用户。如果在已经有一个获取请求在等待的时候，派发了 "USER_FETCH_REQUESTED"，
+  那么等待的获取请求将被取消，只有最新的请求会被执行。
 */
 function* mySaga() {
   yield takeLatest('USER_FETCH_REQUESTED', fetchUser)
@@ -74,7 +73,7 @@ function* mySaga() {
 export default mySaga
 ```
 
-To run our Saga, we'll have to connect it to the Redux Store using the `redux-saga` middleware.
+要运行我们的Saga，我们需要使用`redux-saga`中间件将其连接到Redux Store。
 
 #### `main.js`
 
@@ -85,40 +84,40 @@ import createSagaMiddleware from 'redux-saga'
 import reducer from './reducers'
 import mySaga from './sagas'
 
-// create the saga middleware
+// 创建 saga 中间件
 const sagaMiddleware = createSagaMiddleware()
-// mount it on the Store
+// 将其挂载到 Store 上
 const store = configureStore({
   reducer, 
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(sagaMiddleware),
 })
 
-// then run the saga
+// 然后运行 saga
 sagaMiddleware.run(mySaga)
 
-// render the application
+// 渲染应用程序
 ```
 
-## Using UMD build in the browser
+## 在浏览器中使用UMD构建
 
-There is also a **UMD** build of `redux-saga` available in the `dist/` folder. When using the umd build `redux-saga` is available as `ReduxSaga` in the window object. This enables you to create Saga middleware without using ES6 `import` syntax like this:
+在`dist/`文件夹中也有一个`redux-saga`的**UMD**构建。当使用umd构建时，`redux-saga`将作为`ReduxSaga`在窗口对象中可用。这使你可以像这样创建Saga中间件，而不使用ES6的`import`语法：
 
 ```javascript
 var sagaMiddleware = ReduxSaga.default()
 ```
 
-The UMD version is useful if you don't use Webpack or Browserify. You can access it directly from [unpkg](https://unpkg.com/).
+如果你不使用Webpack或Browserify，UMD版本会很有用。你可以直接从[unpkg](https://unpkg.com/)访问它。
 
-The following builds are available:
+以下构建是可用的：
 
 - [https://unpkg.com/redux-saga/dist/redux-saga.umd.js](https://unpkg.com/redux-saga/dist/redux-saga.umd.js)
 - [https://unpkg.com/redux-saga/dist/redux-saga.umd.min.js](https://unpkg.com/redux-saga/dist/redux-saga.umd.min.js)
 
-**Important!**
-If the browser you are targeting doesn't support _ES2015 generators_, you must transpile them (i.e., with [babel plugin](https://github.com/facebook/regenerator/tree/main/packages/transform)) and provide a valid runtime, such as [the one here](https://unpkg.com/regenerator-runtime/runtime.js). The runtime must be imported before **redux-saga**:
+**重要!**
+如果你的目标浏览器不支持_ES2015生成器_，你必须对它们进行转译（例如，使用[babel插件](https://github.com/facebook/regenerator/tree/main/packages/transform)），并提供一个有效的运行时，例如[这里的一个](https://unpkg.com/regenerator-runtime/runtime.js)。在**redux-saga**之前，必须导入运行时：
 
 ```javascript
 import 'regenerator-runtime/runtime'
-// then
+// 然后
 import sagaMiddleware from 'redux-saga'
 ```

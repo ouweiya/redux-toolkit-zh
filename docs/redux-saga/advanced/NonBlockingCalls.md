@@ -3,34 +3,34 @@ title: 非阻塞调用
 hide_title: true
 ---
 
-# Non-blocking calls
+# 非阻塞调用
 
-In the previous section, we saw how the `take` Effect allows us to better describe a non-trivial flow in a central place.
+在上一节中，我们看到了如何使用 `take` Effect 更好地在一个中心位置描述一个非平凡的流程。
 
-Revisiting the login flow example:
+回顾一下登录流程的例子：
 
 ```javascript
 function* loginFlow() {
   while (true) {
     yield take('LOGIN')
-    // ... perform the login logic
+    // ... 执行登录逻辑
     yield take('LOGOUT')
-    // ... perform the logout logic
+    // ... 执行登出逻辑
   }
 }
 ```
 
-Let's complete the example and implement the actual login/logout logic. Suppose we have an API which permits us to authorize the user on a remote server. If the authorization is successful, the server will return an authorization token which will be stored by our application using DOM storage (assume our API provides another service for DOM storage).
+让我们完成这个例子并实现实际的登录/登出逻辑。假设我们有一个 API，它允许我们在远程服务器上授权用户。如果授权成功，服务器将返回一个授权令牌，我们的应用程序将使用 DOM 存储来存储它（假设我们的 API 提供了另一个用于 DOM 存储的服务）。
 
-When the user logs out, we'll delete the authorization token stored previously.
+当用户登出时，我们将删除之前存储的授权令牌。
 
-### First try
+### 第一次尝试
 
-So far we have all Effects needed to implement the above flow. We can wait for specific actions in the store using the `take` Effect. We can make asynchronous calls using the `call` Effect. Finally, we can dispatch actions to the store using the `put` Effect.
+到目前为止，我们已经有了所有需要实现上述流程的 Effects。我们可以使用 `take` Effect 在存储中等待特定的动作。我们可以使用 `call` Effect 进行异步调用。最后，我们可以使用 `put` Effect 向存储中派发动作。
 
-Let's give it a try:
+让我们试一试：
 
-> Note: the code below has a subtle issue. Make sure to read the section until the end.
+> 注意：下面的代码有一个微妙的问题。请确保阅读到本节的最后。
 
 ```javascript
 import { take, call, put } from 'redux-saga/effects'
@@ -59,25 +59,25 @@ function* loginFlow() {
 }
 ```
 
-First, we created a separate Generator `authorize` which will perform the actual API call and notify the Store upon success.
+首先，我们创建了一个单独的 Generator `authorize`，它将执行实际的 API 调用并在成功时通知 Store。
 
-The `loginFlow` implements its entire flow inside a `while (true)` loop, which means once we reach the last step in the flow (`LOGOUT`) we start a new iteration by waiting for a new `LOGIN_REQUEST` action.
+`loginFlow` 在 `while (true)` 循环内实现其整个流程，这意味着一旦我们到达流程的最后一步（`LOGOUT`），我们就会开始新的迭代，等待新的 `LOGIN_REQUEST` 动作。
 
-`loginFlow` first waits for a `LOGIN_REQUEST` action. Then, it retrieves the credentials in the action payload (`user` and `password`) and makes a `call` to the `authorize` task.
+`loginFlow` 首先等待一个 `LOGIN_REQUEST` 动作。然后，它在动作负载中检索凭据（`user` 和 `password`），并对 `authorize` 任务进行 `call`。
 
-As you noted, `call` isn't only for invoking functions returning Promises. We can also use it to invoke other Generator functions. In the above example, **`loginFlow` will wait for authorize until it terminates and returns** (i.e. after performing the api call, dispatching the action and then returning the token to `loginFlow`).
+如你所见，`call` 不仅用于调用返回 Promise 的函数。我们也可以用它来调用其他 Generator 函数。在上面的例子中，**`loginFlow` 将等待 authorize 直到它终止并返回**（即在执行 api 调用、派发动作然后将令牌返回给 `loginFlow` 之后）。
 
-If the API call succeeds, `authorize` will dispatch a `LOGIN_SUCCESS` action then return the fetched token. If it results in an error, it'll dispatch a `LOGIN_ERROR` action.
+如果 API 调用成功，`authorize` 将派发一个 `LOGIN_SUCCESS` 动作，然后返回获取的令牌。如果出现错误，它将派发一个 `LOGIN_ERROR` 动作。
 
-If the call to `authorize` is successful, `loginFlow` will store the returned token in the DOM storage and wait for a `LOGOUT` action. When the user logs out, we remove the stored token and wait for a new user login.
+如果对 `authorize` 的调用成功，`loginFlow` 将在 DOM 存储中存储返回的令牌，并等待一个 `LOGOUT` 动作。当用户登出时，我们删除存储的令牌并等待新的用户登录。
 
-If the `authorize` failed, it'll return `undefined`, which will cause `loginFlow` to skip the previous process and wait for a new `LOGIN_REQUEST` action.
+如果 `authorize` 失败，它将返回 `undefined`，这将导致 `loginFlow` 跳过前面的过程并等待新的 `LOGIN_REQUEST` 动作。
 
-Observe how the entire logic is stored in one place. A new developer reading our code doesn't have to travel between various places to understand the control flow. It's like reading a synchronous algorithm: steps are laid out in their natural order. And we have functions which call other functions and wait for their results.
+注意整个逻辑都存储在一个地方。新的开发者阅读我们的代码时不必在各个地方来回跳转以理解控制流程。这就像阅读一个同步算法：步骤按照自然顺序排列。我们有函数调用其他函数并等待它们的结果。
 
-### But there is still a subtle issue with the above approach
+### 但是上述方法仍然存在一个微妙的问题
 
-Suppose that when the `loginFlow` is waiting for the following call to resolve:
+假设当 `loginFlow` 正在等待以下调用解决时：
 
 ```javascript
 function* loginFlow() {
@@ -92,31 +92,31 @@ function* loginFlow() {
 }
 ```
 
-The user clicks on the `Logout` button causing a `LOGOUT` action to be dispatched.
+用户点击了 `Logout` 按钮，导致派发了一个 `LOGOUT` 动作。
 
-The following example illustrates the hypothetical sequence of the events:
+以下示例说明了事件的假设顺序：
 
 ```
 UI                              loginFlow
 --------------------------------------------------------
-LOGIN_REQUEST...................call authorize.......... waiting to resolve
+LOGIN_REQUEST...................call authorize.......... 等待解决
 ........................................................
 ........................................................
-LOGOUT.................................................. missed!
+LOGOUT.................................................. 错过了！
 ........................................................
-................................authorize returned...... dispatch a `LOGIN_SUCCESS`!!
+................................authorize 返回了........ 派发一个 `LOGIN_SUCCESS`!!
 ........................................................
 ```
 
-When `loginFlow` is blocked on the `authorize` call, an eventual `LOGOUT` occurring in between the call and the response will be missed, because `loginFlow` hasn't yet performed the `yield take('LOGOUT')`.
+当 `loginFlow` 在 `authorize` 调用上被阻塞时，调用和响应之间发生的任何 `LOGOUT` 都会被错过，因为 `loginFlow` 还没有执行 `yield take('LOGOUT')`。
 
-The problem with the above code is that `call` is a blocking Effect. i.e. the Generator can't perform/handle anything else until the call terminates. But in our case we do not only want `loginFlow` to execute the authorization call, but also watch for an eventual `LOGOUT` action that may occur in the middle of this call. That's because `LOGOUT` is *concurrent* to the `authorize` call.
+上述代码的问题在于 `call` 是一个阻塞效应。也就是说，生成器在调用结束之前不能执行/处理其他任何事情。但在我们的情况下，我们不仅希望 `loginFlow` 执行授权调用，还希望在此调用中间观察可能发生的 `LOGOUT` 动作。这是因为 `LOGOUT` 是与 `authorize` 调用 *并发* 的。
 
-So what's needed is some way to start `authorize` without blocking so `loginFlow` can continue and watch for an eventual/concurrent `LOGOUT` action.
+所以，我们需要的是一种启动 `authorize` 而不阻塞 `loginFlow` 的方法，这样 `loginFlow` 就可以继续并观察可能的/并发的 `LOGOUT` 动作。
 
-To express non-blocking calls, the library provides another Effect: [`fork`](https://redux-saga.js.org/docs/api/index.html#forkfn-args). When we fork a *task*, the task is started in the background and the caller can continue its flow without waiting for the forked task to terminate.
+为了表达非阻塞调用，库提供了另一个效应：[`fork`](https://redux-saga.js.org/docs/api/index.html#forkfn-args)。当我们 fork 一个 *任务* 时，任务在后台启动，调用者可以在不等待 fork 的任务结束的情况下继续其流程。
 
-So in order for `loginFlow` to not miss a concurrent `LOGOUT`, we must not `call` the `authorize` task, instead we have to `fork` it.
+所以，为了让 `loginFlow` 不错过并发的 `LOGOUT`，我们不能 `call` `authorize` 任务，而必须 `fork` 它。
 
 ```javascript
 import { fork, call, take, put } from 'redux-saga/effects'
@@ -125,7 +125,7 @@ function* loginFlow() {
   while (true) {
     ...
     try {
-      // non-blocking call, what's the returned value here ?
+      // 非阻塞调用，这里返回的值是什么？
       const ?? = yield fork(authorize, user, password)
       ...
     }
@@ -134,7 +134,7 @@ function* loginFlow() {
 }
 ```
 
-The issue now is since our `authorize` action is started in the background, we can't get the `token` result (because we'd have to wait for it). So we need to move the token storage operation into the `authorize` task.
+现在的问题是，由于我们的 `authorize` 动作在后台启动，我们无法获取 `token` 结果（因为我们必须等待它）。所以我们需要将 token 存储操作移动到 `authorize` 任务中。
 
 ```javascript
 import { fork, call, take, put } from 'redux-saga/effects'
@@ -160,19 +160,19 @@ function* loginFlow() {
 }
 ```
 
-We're also doing `yield take(['LOGOUT', 'LOGIN_ERROR'])`. It means we are watching for 2 concurrent actions:
+我们也在做 `yield take(['LOGOUT', 'LOGIN_ERROR'])`。这意味着我们正在同时监视两个动作：
 
-- If the `authorize` task succeeds before the user logs out, it'll dispatch a `LOGIN_SUCCESS` action, then terminate. Our `loginFlow` saga will then wait only for a future `LOGOUT` action (because `LOGIN_ERROR` will never happen).
+- 如果 `authorize` 任务在用户登出之前成功，它将分发一个 `LOGIN_SUCCESS` 动作，然后终止。我们的 `loginFlow` saga 将只等待未来的 `LOGOUT` 动作（因为 `LOGIN_ERROR` 永远不会发生）。
 
-- If the `authorize` fails before the user logs out, it will dispatch a `LOGIN_ERROR` action, then terminate. So `loginFlow` will take the `LOGIN_ERROR` before the `LOGOUT` then it will enter in a another `while` iteration and will wait for the next `LOGIN_REQUEST` action.
+- 如果 `authorize` 在用户登出之前失败，它将分发一个 `LOGIN_ERROR` 动作，然后终止。所以 `loginFlow` 会在 `LOGOUT` 之前接收到 `LOGIN_ERROR`，然后它将进入另一个 `while` 迭代，并等待下一个 `LOGIN_REQUEST` 动作。
 
-- If the user logs out before the `authorize` terminates, then `loginFlow` will take a `LOGOUT` action and also wait for the next `LOGIN_REQUEST`.
+- 如果用户在 `authorize` 结束之前登出，那么 `loginFlow` 将接收到一个 `LOGOUT` 动作，并等待下一个 `LOGIN_REQUEST`。
 
-Note the call for `Api.clearItem` is supposed to be idempotent. It'll have no effect if no token was stored by the `authorize` call. `loginFlow` makes sure no token will be in the storage before waiting for the next login.
+注意，对 `Api.clearItem` 的调用应该是幂等的。如果 `authorize` 调用没有存储令牌，它将没有效果。`loginFlow` 确保在等待下一次登录之前，存储中不会有令牌。
 
-But we're not yet done. If we take a `LOGOUT` in the middle of an API call, we have to **cancel** the `authorize` process, otherwise we'll have 2 concurrent tasks evolving in parallel: The `authorize` task will continue running and upon a successful (resp. failed) result, will dispatch a `LOGIN_SUCCESS` (resp. a `LOGIN_ERROR`) action leading to an inconsistent state.
+但我们还没有完成。如果我们在 API 调用过程中接收到 `LOGOUT`，我们必须**取消** `authorize` 过程，否则我们将有两个并行的任务：`authorize` 任务将继续运行，并在成功（或失败）后，分发一个 `LOGIN_SUCCESS`（或 `LOGIN_ERROR`）动作，导致状态不一致。
 
-In order to cancel a forked task, we use a dedicated Effect [`cancel`](https://redux-saga.js.org/docs/api/index.html#canceltask)
+为了取消一个 forked 任务，我们使用一个专用的 Effect [`cancel`](https://redux-saga.js.org/docs/api/index.html#canceltask)
 
 ```javascript
 import { take, put, call, fork, cancel } from 'redux-saga/effects'
@@ -182,7 +182,7 @@ import { take, put, call, fork, cancel } from 'redux-saga/effects'
 function* loginFlow() {
   while (true) {
     const {user, password} = yield take('LOGIN_REQUEST')
-    // fork return a Task object
+    // fork 返回一个 Task 对象
     const task = yield fork(authorize, user, password)
     const action = yield take(['LOGOUT', 'LOGIN_ERROR'])
     if (action.type === 'LOGOUT')
@@ -192,13 +192,13 @@ function* loginFlow() {
 }
 ```
 
-`yield fork` results in a [Task Object](https://redux-saga.js.org/docs/api/index.html#task). We assign the returned object into a local constant `task`. Later if we take a `LOGOUT` action, we pass that task to the `cancel` Effect. If the task is still running, it'll be aborted. If the task has already completed then nothing will happen and the cancellation will result in a no-op. And finally, if the task completed with an error, then we do nothing, because we know the task already completed.
+`yield fork` 产生一个 [Task 对象](https://redux-saga.js.org/docs/api/index.html#task)。我们将返回的对象赋值给一个本地常量 `task`。稍后，如果我们接收到一个 `LOGOUT` 动作，我们将该任务传递给 `cancel` Effect。如果任务仍在运行，它将被中止。如果任务已经完成，那么什么都不会发生，取消将导致无操作。最后，如果任务以错误完成，那么我们什么都不做，因为我们知道任务已经完成。
 
-We are *almost* done (concurrency is not that easy; you have to take it seriously).
+我们*几乎*完成了（并发并不那么简单；你必须认真对待）。
 
-Suppose that when we receive a `LOGIN_REQUEST` action, our reducer sets some `isLoginPending` flag to true so it can display some message or spinner in the UI. If we get a `LOGOUT` in the middle of an API call and abort the task by *killing it* (i.e. the task is stopped right away), then we may end up again with an inconsistent state. We'll still have `isLoginPending` set to true and our reducer will be waiting for an outcome action (`LOGIN_SUCCESS` or `LOGIN_ERROR`).
+假设当我们接收到一个 `LOGIN_REQUEST` 动作时，我们的 reducer 将某个 `isLoginPending` 标志设置为 true，以便在 UI 中显示一些消息或旋转器。如果我们在 API 调用过程中接收到 `LOGOUT` 并通过*杀死它*（即任务立即停止）来中止任务，那么我们可能会再次处于不一致的状态。我们仍然将 `isLoginPending` 设置为 true，我们的 reducer 将等待一个结果动作（`LOGIN_SUCCESS` 或 `LOGIN_ERROR`）。
 
-Fortunately, the `cancel` Effect won't brutally kill our `authorize` task. Instead, it'll give it a chance to perform its cleanup logic. The cancelled task can handle any cancellation logic (as well as any other type of completion) in its `finally` block. Since a finally block execute on any type of completion (normal return, error, or forced cancellation), there is an Effect `cancelled` which you can use if you want handle cancellation in a special way:
+幸运的是，`cancel` Effect 不会粗暴地杀死我们的 `authorize` 任务。相反，它会给它一个执行清理逻辑的机会。被取消的任务可以在其 `finally` 块中处理任何取消逻辑（以及任何其他类型的完成）。由于 finally 块在任何类型的完成（正常返回、错误或强制取消）上执行，所以有一个 Effect `cancelled`，你可以使用它如果你想以特殊的方式处理取消：
 
 ```javascript
 import { take, call, put, cancelled } from 'redux-saga/effects'
@@ -214,13 +214,13 @@ function* authorize(user, password) {
     yield put({type: 'LOGIN_ERROR', error})
   } finally {
     if (yield cancelled()) {
-      // ... put special cancellation handling code here
+      // ... 在这里放置特殊的取消处理代码
     }
   }
 }
 ```
 
-You may have noticed that we haven't done anything about clearing our `isLoginPending` state. For that, there are at least two possible solutions:
+你可能已经注意到，我们还没有做任何关于清除我们的 `isLoginPending` 状态的事情。对此，至少有两种可能的解决方案：
 
-- dispatch a dedicated action `RESET_LOGIN_PENDING`
-- make the reducer clear the `isLoginPending` on a `LOGOUT` action
+- 分发一个专用的动作 `RESET_LOGIN_PENDING`
+- 让 reducer 在 `LOGOUT` 动作上清除 `isLoginPending`

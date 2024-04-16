@@ -3,15 +3,15 @@ title: 编写 Sagas
 hide_title: true
 ---
 
-# Composing Sagas
+# 组合 Sagas
 
-While using `yield*` provides an idiomatic way of composing Sagas, this approach has some limitations:
+虽然使用 `yield*` 提供了一种组合 Sagas 的习惯性方式，但这种方法有一些限制：
 
-- You'll likely want to test nested generators separately. This leads to some duplication in the test code as well as the overhead of the duplicated execution. We don't want to execute a nested generator but only make sure the call to it was issued with the right argument.
+- 你可能会希望单独测试嵌套的生成器。这会导致测试代码中的一些重复，以及重复执行的开销。我们不希望执行嵌套的生成器，只希望确保对它的调用是用正确的参数发出的。
 
-- More importantly, `yield*` allows only for sequential composition of tasks, so you can only `yield*` to one generator at a time.
+- 更重要的是，`yield*` 只允许任务的顺序组合，所以你一次只能 `yield*` 到一个生成器。
 
-You can use `yield` to start one or more subtasks in parallel. When yielding a call to a generator, the Saga will wait for the generator to terminate before progressing, then resume with the returned value (or throws if an error propagates from the subtask).
+你可以使用 `yield` 同时启动一个或多个子任务。当对生成器的调用产生 yield 时，Saga 会等待生成器终止后再继续，然后用返回的值恢复（或者如果错误从子任务传播，则抛出）。
 
 ```javascript
 function* fetchPosts() {
@@ -22,13 +22,12 @@ function* fetchPosts() {
 
 function* watchFetch() {
   while (yield take('FETCH_POSTS')) {
-    yield call(fetchPosts) // waits for the fetchPosts task to terminate
+    yield call(fetchPosts) // 等待 fetchPosts 任务终止
   }
 }
 ```
 
-Yielding to an array of nested generators will start all the sub-generators in parallel, wait
-for them to finish, then resume with all the results
+对嵌套生成器的数组产生 yield 会同时启动所有的子生成器，等待它们完成，然后用所有的结果恢复
 
 ```javascript
 function* mainSaga(getState) {
@@ -37,15 +36,15 @@ function* mainSaga(getState) {
 }
 ```
 
-In fact, yielding Sagas is no different than yielding other effects (future actions, timeouts, etc). This means you can combine those Sagas with all the other types using the effect combinators.
+实际上，产生 Sagas 的 yield 与产生其他效果（未来的动作，超时等）没有区别。这意味着你可以使用效果组合器将这些 Sagas 与所有其他类型组合。
 
-For example, you may want the user to finish some game in a limited amount of time:
+例如，你可能希望用户在有限的时间内完成一些游戏：
 
 ```javascript
 function* game(getState) {
   let finished
   while (!finished) {
-    // has to finish in 60 seconds
+    // 必须在60秒内完成
     const {score, timeout} = yield race({
       score: call(play, getState),
       timeout: delay(60000)

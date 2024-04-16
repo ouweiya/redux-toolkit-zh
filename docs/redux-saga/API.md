@@ -4,27 +4,27 @@ title: API 参考
 hide_title: true
 ---
 
-# API Reference
+# API 参考
 
-## Middleware API
+## 中间件 API
 
 ### `createSagaMiddleware(options)`
 
-Creates a Redux middleware and connects the Sagas to the Redux Store
+创建一个 Redux 中间件并将 Sagas 连接到 Redux Store
 
-- `options: Object` - A list of options to pass to the middleware. Currently supported options are:
-  - `context: Object` - initial value of the saga's context.
+- `options: Object` - 传递给中间件的选项列表。目前支持的选项有：
+  - `context: Object` - saga 的初始上下文值。
 
-  - `sagaMonitor` : [SagaMonitor](#sagamonitor) - If a Saga Monitor is provided, the middleware will deliver monitoring events to the monitor.
+  - `sagaMonitor` : [SagaMonitor](#sagamonitor) - 如果提供了 Saga Monitor，中间件将向监视器传递监视事件。
 
-  - `onError: (error: Error, { sagaStack: string })` - if provided, the middleware will call it with uncaught errors from Sagas. useful for sending uncaught exceptions to error tracking services.
-  - `effectMiddlewares` : Function [] - allows you to intercept any effect, resolve it on your own and pass to the next middleware. See [this section](advanced/Testing.md#effectmiddlewares) for a detailed example
-  - `channel`: If provided, the middleware will use this channel instead of the default `stdChannel()` for
-   * `take` and `put` effects.
+  - `onError: (error: Error, { sagaStack: string })` - 如果提供，中间件将用 Sagas 的未捕获错误调用它。对于将未捕获的异常发送到错误跟踪服务很有用。
+  - `effectMiddlewares` : Function [] - 允许你拦截任何效果，自己解决它并传递给下一个中间件。详细示例请参见[此部分](advanced/Testing.md#effectmiddlewares)
+  - `channel`: 如果提供，中间件将使用此通道而不是默认的 `stdChannel()` 来进行
+   * `take` 和 `put` 效果。
 
-#### Example
+#### 示例
 
-Below we will create a function `configureStore` which will enhance the Store with a new method `runSaga`. Then in our main module, we will use the method to start the root Saga of the application.
+下面我们将创建一个函数 `configureStore`，它将通过一个新的方法 `runSaga` 来增强 Store。然后在我们的主模块中，我们将使用该方法来启动应用程序的 root Saga。
 
 **configureStore.js**
 ```javascript
@@ -32,10 +32,10 @@ import createSagaMiddleware from 'redux-saga'
 import reducer from './path/to/reducer'
 
 export default function configureStore(initialState) {
-  // Note: passing middleware as the last argument to createStore requires redux@>=3.1.0
+  // 注意：将中间件作为最后一个参数传递给 createStore 需要 redux@>=3.1.0
   const sagaMiddleware = createSagaMiddleware()
   return {
-    ...createStore(reducer, initialState, applyMiddleware(/* other middleware, */sagaMiddleware)),
+    ...createStore(reducer, initialState, applyMiddleware(/* 其他中间件, */sagaMiddleware)),
     runSaga: sagaMiddleware.run
   }
 }
@@ -45,99 +45,99 @@ export default function configureStore(initialState) {
 ```javascript
 import configureStore from './configureStore'
 import rootSaga from './sagas'
-// ... other imports
+// ... 其他导入
 
 const store = configureStore()
 store.runSaga(rootSaga)
 ```
 
-#### Notes
+#### 注释
 
-See below for more information on the `sagaMiddleware.run` method.
+有关 `sagaMiddleware.run` 方法的更多信息，请参见下面。
 
 ### `middleware.run(saga, ...args)`
 
-Dynamically run `saga`. Can be used to run Sagas **only after** the `applyMiddleware` phase.
+动态运行 `saga`。只能在 `applyMiddleware` 阶段**之后**运行 Sagas。
 
-- `saga: Function`: a Generator function
-- `args: Array<any>`: arguments to be provided to `saga`
+- `saga: Function`: 一个生成器函数
+- `args: Array<any>`: 提供给 `saga` 的参数
 
-The method returns a [Task descriptor](#task-descriptor).
+该方法返回一个 [任务描述符](#task-descriptor)。
 
-#### Notes
+#### 注释
 
-`saga` must be a function which returns a [Generator Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator). The middleware will then iterate over the Generator and execute all yielded Effects.
+`saga` 必须是一个返回 [生成器对象](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator)的函数。然后，中间件将遍历生成器并执行所有产生的效果。
 
-`saga` may also start other sagas using the various Effects provided by the library. The iteration process described below is also applied to all child sagas.
+`saga` 也可以使用库提供的各种效果启动其他 sagas。下面描述的迭代过程也适用于所有子 sagas。
 
-In the first iteration, the middleware invokes the `next()` method to retrieve the next Effect. The middleware then executes the yielded Effect as specified by the Effects API below. Meanwhile, the Generator will be suspended until the effect execution terminates. Upon receiving the result of the execution, the middleware calls `next(result)` on the Generator passing it the retrieved result as an argument. This process is repeated until the Generator terminates normally or by throwing some error.
+在第一次迭代中，中间件调用 `next()` 方法来获取下一个效果。然后，中间件执行由下面的 Effects API 指定的产生的效果。同时，生成器将被挂起，直到效果执行结束。在接收到执行结果后，中间件在生成器上调用 `next(result)`，并将检索到的结果作为参数传递。这个过程重复，直到生成器正常终止或抛出一些错误。
 
-If the execution results in an error (as specified by each Effect creator) then the `throw(error)` method of the Generator is called instead. If the Generator function defines a `try/catch` surrounding the current yield instruction, then the `catch` block will be invoked by the underlying Generator runtime. The runtime will also invoke any corresponding finally block.
+如果执行结果是一个错误（如每个 Effect 创建者所指定的），那么将调用生成器的 `throw(error)` 方法。如果生成器函数定义了一个 `try/catch` 来包围当前的 yield 指令，那么底层的生成器运行时将调用 `catch` 块。运行时也将调用任何对应的 finally 块。
 
-In the case a Saga is cancelled (either manually or using the provided Effects), the middleware will invoke `return()` method of the Generator. This will cause the Generator to skip directly to the finally block.
+在取消 Saga 的情况下（无论是手动还是使用提供的效果），中间件将调用生成器的 `return()` 方法。这将导致生成器直接跳到 finally 块。
 
-## Effect creators
+## 效果创建者
 
-> Notes:
+> 注释：
 
-> - Each function below returns a plain JavaScript object and does not perform any execution.
-> - The execution is performed by the middleware during the Iteration process described above.
-> - The middleware examines each Effect description and performs the appropriate action.
+> - 下面的每个函数都返回一个普通的 JavaScript 对象，并不执行任何操作。
+> - 执行是由中间件在上述的迭代过程中进行的。
+> - 中间件检查每个效果描述并执行适当的操作。
 
 ### `take(pattern)`
 
-Creates an Effect description that instructs the middleware to wait for a specified action on the Store.
-The Generator is suspended until an action that matches `pattern` is dispatched.
+创建一个 Effect 描述，指示中间件等待 Store 上的指定操作。
+生成器将挂起，直到分派一个与 `pattern` 匹配的操作。
 
-The result of `yield take(pattern)` is an action object being dispatched.
+`yield take(pattern)` 的结果是正在分派的操作对象。
 
-`pattern` is interpreted using the following rules:
+`pattern` 按照以下规则解释：
 
-- If `take` is called with no arguments or `'*'` all dispatched actions are matched (e.g. `take()` will match all actions)
+- 如果没有参数或 `'*'` 调用 `take`，则所有分派的操作都将匹配（例如，`take()` 将匹配所有操作）
 
-- If it is a function, the action is matched if `pattern(action)` is true (e.g. `take(action => action.entities)` will match all actions having a (truthy) `entities` field.)
-> Note: if the pattern function has `toString` defined on it, `action.type` will be tested against `pattern.toString()` instead. This is useful if you're using an action creator library like redux-act or redux-actions.
+- 如果它是一个函数，那么如果 `pattern(action)` 为真，则操作匹配（例如，`take(action => action.entities)` 将匹配所有具有（真实的）`entities` 字段的操作。）
+> 注意：如果在模式函数上定义了 `toString`，则将 `action.type` 测试为 `pattern.toString()`。如果你正在使用像 redux-act 或 redux-actions 这样的操作创建库，这将非常有用。
 
-- If it is a String, the action is matched if `action.type === pattern` (e.g. `take(INCREMENT_ASYNC)`)
+- 如果它是一个字符串，那么如果 `action.type === pattern`，则操作匹配（例如，`take(INCREMENT_ASYNC)`）
 
-- If it is an array, each item in the array is matched with aforementioned rules, so the mixed array of strings and function predicates is supported. The most common use case is an array of strings though, so that `action.type` is matched against all items in the array (e.g. `take([INCREMENT, DECREMENT])` and that would match either actions of type `INCREMENT` or `DECREMENT`).
+- 如果它是一个数组，那么数组中的每一项都与上述规则匹配，因此支持字符串和函数谓词的混合数组。最常见的用例是字符串数组，因此 `action.type` 与数组中的所有项匹配（例如，`take([INCREMENT, DECREMENT])`，这将匹配类型为 `INCREMENT` 或 `DECREMENT` 的任何操作）。
 
-The middleware provides a special action `END`. If you dispatch the END action, then all Sagas blocked on a take Effect will be terminated regardless of the specified pattern. If the terminated Saga has still some forked tasks which are still running, it will wait for all the child tasks to terminate before terminating the Task.
+中间件提供了一个特殊的操作 `END`。如果你分派 END 操作，那么所有在 take Effect 上阻塞的 Sagas 将被终止，无论指定的模式如何。如果被终止的 Saga 仍然有一些正在运行的 forked 任务，它将等待所有子任务终止后再终止任务。
 
 ### `takeMaybe(pattern)`
 
-Same as `take(pattern)` but does not automatically terminate the Saga on an `END` action. Instead all Sagas blocked on a take Effect will get the `END` object.
+与 `take(pattern)` 相同，但在 `END` 操作上不会自动终止 Saga。相反，所有在 take Effect 上阻塞的 Sagas 将得到 `END` 对象。
 
-#### Notes
+#### 注释
 
-`takeMaybe` got its name from the FP analogy - it's like instead of having a return type of `ACTION` (with automatic handling) we can have a type of `Maybe(ACTION)` so we can handle both cases:
+`takeMaybe` 的名字来自 FP 类比 - 它就像我们可以有 `Maybe(ACTION)` 类型的返回类型，所以我们可以处理两种情况：
 
-- case when there is a `Just(ACTION)` (we have an action)
-- the case of `NOTHING` (channel was closed*). i.e. we need some way to map over `END`
+- 有 `Just(ACTION)`（我们有一个操作）的情况
+- `NOTHING`（通道已关闭*）的情况。即我们需要某种方式来映射 `END`
 
-* internally all `dispatch`ed actions are going through the `stdChannel` which is getting closed when `dispatch(END)` happens
+* 内部所有 `dispatch` 的操作都通过 `stdChannel` 进行，当 `dispatch(END)` 发生时，`stdChannel` 将被关闭
 
 ### `take(channel)`
 
-Creates an Effect description that instructs the middleware to wait for a specified message from the provided Channel. If the channel is already closed, then the Generator will immediately terminate following the same process described above for `take(pattern)`.
+创建一个 Effect 描述，指示中间件等待从提供的 Channel 接收指定的消息。如果通道已经关闭，那么生成器将立即终止，过程与上述 `take(pattern)` 描述的相同。
 
 ### `takeMaybe(channel)`
 
-Same as `take(channel)` but does not automatically terminate the Saga on an `END` action. Instead all Sagas blocked on a take Effect will get the `END` object. See more [here](#takemaybepattern)
+与 `take(channel)` 相同，但在 `END` 操作上不会自动终止 Saga。相反，所有在 take Effect 上阻塞的 Sagas 将得到 `END` 对象。查看更多[这里](#takemaybepattern)
 
 ### `takeEvery(pattern, saga, ...args)`
 
-Spawns a `saga` on each action dispatched to the Store that matches `pattern`.
+在每个分派到 Store 的与 `pattern` 匹配的操作上生成一个 `saga`。
 
-- `pattern: String | Array | Function` - for more information see docs for [`take(pattern)`](#takepattern)
+- `pattern: String | Array | Function` - 更多信息请参阅 [`take(pattern)`](#takepattern) 的文档
 
-- `saga: Function` - a Generator function
+- `saga: Function` - 一个生成器函数
 
-- `args: Array<any>` - arguments to be passed to the started task. `takeEvery` will add the incoming action to the argument list (i.e. the action will be the last argument provided to `saga`)
+- `args: Array<any>` - 要传递给启动任务的参数。`takeEvery` 将将传入的操作添加到参数列表中（即，操作将是提供给 `saga` 的最后一个参数）
 
-#### Example
+#### 示例
 
-In the following example, we create a basic task `fetchUser`. We use `takeEvery` to start a new `fetchUser` task on each dispatched `USER_REQUESTED` action:
+在以下示例中，我们创建了一个基本任务 `fetchUser`。我们使用 `takeEvery` 在每个分派的 `USER_REQUESTED` 操作上启动一个新的 `fetchUser` 任务：
 
 ```javascript
 import { takeEvery } from `redux-saga/effects`
@@ -151,9 +151,9 @@ function* watchFetchUser() {
 }
 ```
 
-#### Notes
+#### 注释
 
-`takeEvery` is a high-level API built using `take` and `fork`. Here is how the helper could be implemented using the low-level Effects
+`takeEvery` 是使用 `take` 和 `fork` 构建的高级 API。以下是如何使用低级效果实现帮助器
 
 ```javascript
 const takeEvery = (patternOrChannel, saga, ...args) => fork(function*() {
@@ -164,41 +164,38 @@ const takeEvery = (patternOrChannel, saga, ...args) => fork(function*() {
 })
 ```
 
-`takeEvery` allows concurrent actions to be handled. In the example above, when a `USER_REQUESTED`
-action is dispatched, a new `fetchUser` task is started even if a previous `fetchUser` is still pending
-(for example, the user clicks on a `Load User` button 2 consecutive times at a rapid rate, the 2nd
-click will dispatch a `USER_REQUESTED` action while the `fetchUser` fired on the first one hasn't yet terminated)
+`takeEvery` 允许处理并发操作。在上面的示例中，当分派一个 `USER_REQUESTED`
+操作时，即使前一个 `fetchUser` 仍在等待，也会启动一个新的 `fetchUser` 任务
+（例如，用户连续两次快速点击 `Load User` 按钮，第二次
+点击将分派一个 `USER_REQUESTED` 操作，而在第一次触发的 `fetchUser` 还没有终止）
 
-`takeEvery` doesn't handle out of order responses from tasks. There is no guarantee that the tasks will
-terminate in the same order they were started. To handle out of order responses, you may consider `takeLatest`
-below.
+`takeEvery` 不处理任务的乱序响应。不能保证任务将
+按照它们开始的顺序终止。要处理乱序响应，你可以考虑下面的 `takeLatest`。
 
 ### `takeEvery(channel, saga, ...args)`
 
-You can also pass in a channel as argument and the behaviour is the same as [takeEvery(pattern, saga, ...args)](#takeeverypattern-saga-args).
+你也可以将通道作为参数传入，其行为与 [takeEvery(pattern, saga, ...args)](#takeeverypattern-saga-args) 相同。
 
 ### `takeLatest(pattern, saga, ...args)`
 
-Forks a `saga` on each action dispatched to the Store that matches `pattern`. And automatically cancels
-any previous `saga` task started previously if it's still running.
+对于匹配 `pattern` 的每个派发到 Store 的动作，都会触发一个 `saga`。并自动取消
+任何之前启动的仍在运行的 `saga` 任务。
 
-Each time an action is dispatched to the store. And if this action matches `pattern`, `takeLatest`
-starts a new `saga` task in the background. If a `saga` task was started previously (on the last action dispatched
-before the actual action), and if this task is still running, the task will be cancelled.
+每次动作被派发到 store。如果此动作匹配 `pattern`，`takeLatest`
+会在后台启动一个新的 `saga` 任务。如果之前启动了一个 `saga` 任务（在实际动作之前派发的最后一个动作），并且此任务仍在运行，那么该任务将被取消。
 
-- `pattern: String | Array | Function` - for more information see docs for [`take(pattern)`](#takepattern)
+- `pattern: String | Array | Function` - 更多信息请查看 [`take(pattern)`](#takepattern) 的文档
 
-- `saga: Function` - a Generator function
+- `saga: Function` - 一个 Generator 函数
 
-- `args: Array<any>` - arguments to be passed to the started task. `takeLatest` will add the
-incoming action to the argument list (i.e. the action will be the last argument provided to `saga`)
+- `args: Array<any>` - 要传递给启动任务的参数。`takeLatest` 会将
+传入的动作添加到参数列表中（即，动作将是提供给 `saga` 的最后一个参数）
 
-#### Example
+#### 示例
 
-In the following example, we create a basic task `fetchUser`. We use `takeLatest` to
-start a new `fetchUser` task on each dispatched `USER_REQUESTED` action. Since `takeLatest`
-cancels any pending task started previously, we ensure that if a user triggers multiple consecutive
-`USER_REQUESTED` actions rapidly, we'll only conclude with the latest action
+在以下示例中，我们创建了一个基本任务 `fetchUser`。我们使用 `takeLatest` 来
+在每个派发的 `USER_REQUESTED` 动作上启动一个新的 `fetchUser` 任务。由于 `takeLatest`
+会取消之前启动的任何待处理任务，我们确保如果用户快速连续触发多个 `USER_REQUESTED` 动作，我们只会处理最新的动作
 
 ```javascript
 import { takeLatest } from `redux-saga/effects`
@@ -212,9 +209,9 @@ function* watchLastFetchUser() {
 }
 ```
 
-#### Notes
+#### 注释
 
-`takeLatest` is a high-level API built using `take` and `fork`. Here is how the helper could be implemented using the low-level Effects
+`takeLatest` 是使用 `take` 和 `fork` 构建的高级 API。以下是如何使用低级效果实现该助手的方法
 
 ```javascript
 const takeLatest = (patternOrChannel, saga, ...args) => fork(function*() {
@@ -222,7 +219,7 @@ const takeLatest = (patternOrChannel, saga, ...args) => fork(function*() {
   while (true) {
     const action = yield take(patternOrChannel)
     if (lastTask) {
-      yield cancel(lastTask) // cancel is no-op if the task has already terminated
+      yield cancel(lastTask) // 如果任务已经结束，取消操作无效
     }
     lastTask = yield fork(saga, ...args.concat(action))
   }
@@ -231,28 +228,27 @@ const takeLatest = (patternOrChannel, saga, ...args) => fork(function*() {
 
 ### `takeLatest(channel, saga, ...args)`
 
-You can also pass in a channel as argument and the behaviour is the same as [takeLatest(pattern, saga, ...args)](#takelatestpattern-saga-args).
+你也可以将通道作为参数传入，其行为与 [takeLatest(pattern, saga, ...args)](#takelatestpattern-saga-args) 相同。
 
 ### `takeLeading(pattern, saga, ...args)`
 
-Spawns a `saga` on each action dispatched to the Store that matches `pattern`.
-After spawning a task once, it blocks until spawned saga completes and then starts to listen for a `pattern` again.
+对于匹配 `pattern` 的每个派发到 Store 的动作，都会触发一个 `saga`。
+在触发一次任务后，它会阻塞，直到触发的 saga 完成，然后再开始监听 `pattern`。
 
-In short, `takeLeading` is listening for the actions when it doesn't run a saga.
+简而言之，`takeLeading` 在不运行 saga 时监听动作。
 
-- `pattern: String | Array | Function` - for more information see docs for [`take(pattern)`](#takepattern)
+- `pattern: String | Array | Function` - 更多信息请查看 [`take(pattern)`](#takepattern) 的文档
 
-- `saga: Function` - a Generator function
+- `saga: Function` - 一个 Generator 函数
 
-- `args: Array<any>` - arguments to be passed to the started task. `takeLeading` will add the
-incoming action to the argument list (i.e. the action will be the last argument provided to `saga`)
+- `args: Array<any>` - 要传递给启动任务的参数。`takeLeading` 会将
+传入的动作添加到参数列表中（即，动作将是提供给 `saga` 的最后一个参数）
 
-#### Example
+#### 示例
 
-In the following example, we create a basic task `fetchUser`. We use `takeLeading` to
-start a new `fetchUser` task on each dispatched `USER_REQUESTED` action. Since `takeLeading`
-ignores any new coming task after it's started, we ensure that if a user triggers multiple consecutive
-`USER_REQUESTED` actions rapidly, we'll only keep on running with the leading action
+在以下示例中，我们创建了一个基本任务 `fetchUser`。我们使用 `takeLeading` 来
+在每个派发的 `USER_REQUESTED` 动作上启动一个新的 `fetchUser` 任务。由于 `takeLeading`
+在启动后忽略任何新的任务，我们确保如果用户快速连续触发多个 `USER_REQUESTED` 动作，我们只会继续运行领先的动作
 
 ```javascript
 import { takeLeading } from `redux-saga/effects`
@@ -266,9 +262,9 @@ function* watchLastFetchUser() {
 }
 ```
 
-#### Notes
+#### 注释
 
-`takeLeading` is a high-level API built using `take` and `call`. Here is how the helper could be implemented using the low-level Effects
+`takeLeading` 是使用 `take` 和 `call` 构建的高级 API。以下是如何使用低级效果实plement该助手的方法
 
 ```javascript
 const takeLeading = (patternOrChannel, saga, ...args) => fork(function*() {
@@ -281,219 +277,178 @@ const takeLeading = (patternOrChannel, saga, ...args) => fork(function*() {
 
 ### `takeLeading(channel, saga, ...args)`
 
-You can also pass in a channel as argument and the behavior is the same as [takeLeading(pattern, saga, ...args)](#takeleadingpattern-saga-args).
+你也可以将通道作为参数传入，其行为与 [takeLeading(pattern, saga, ...args)](#takeleadingpattern-saga-args) 相同。
 
 ### `put(action)`
 
-Creates an Effect description that instructs the middleware to schedule the dispatching of an action to the store. This dispatch may not be immediate since other tasks might lie ahead in the saga task queue or still be in progress.
+创建一个 Effect 描述，指示中间件安排将一个动作分派到存储器。这个分派可能不会立即发生，因为 saga 任务队列中可能还有其他任务，或者还有任务正在进行中。
 
-You can, however, expect the store to be updated in the current stack frame (i.e. by the next line of code after `yield put(action)`) unless you have other Redux middlewares with asynchronous flows that delay the propagation of the action.
+然而，你可以期望在当前的堆栈帧（即 `yield put(action)` 后的下一行代码）中更新存储器，除非你有其他的 Redux 中间件，它们有异步流程，这会延迟动作的传播。
 
-Downstream errors (e.g. from the reducer) will be bubbled up.
+下游错误（例如，来自 reducer 的错误）将被冒泡上来。
 
-- `action: Object` - [see Redux `dispatch` documentation for complete info](https://redux.js.org/api/store#dispatchaction)
+- `action: Object` - [查看 Redux `dispatch` 文档以获取完整信息](https://redux.js.org/api/store#dispatchaction)
 
 ### `putResolve(action)`
 
-Just like [`put`](#putaction) but the effect is blocking (if promise is returned from `dispatch` it will wait for its resolution) and will bubble up errors from downstream.
+就像 [`put`](#putaction) 一样，但是 effect 是阻塞的（如果从 `dispatch` 返回 promise，它将等待其解决）并且会冒泡下游的错误。
 
-- `action: Object` - [see Redux `dispatch` documentation for complete info](https://redux.js.org/api/store/#dispatchaction)
+- `action: Object` - [查看 Redux `dispatch` 文档以获取完整信息](https://redux.js.org/api/store/#dispatchaction)
 
 ### `put(channel, action)`
 
-Creates an Effect description that instructs the middleware to put an action into the provided channel.
+创建一个 Effect 描述，指示中间件将一个动作放入提供的通道中。
 
-- `channel: Channel` - a [`Channel`](#channel) Object.
-- `action: Object` - [see Redux `dispatch` documentation for complete info](https://redux.js.org/api/store/#dispatchaction)
+- `channel: Channel` - 一个 [`Channel`](#channel) 对象。
+- `action: Object` - [查看 Redux `dispatch` 文档以获取完整信息](https://redux.js.org/api/store/#dispatchaction)
 
-This effect is blocking if the put is *not* buffered but immediately consumed by takers. If an error
-is thrown in any of these takers it will bubble back into the saga.
+如果 put *不* 是缓冲的，而是立即被 takers 消费，那么这个 effect 就是阻塞的。如果在这些 takers 中抛出了任何错误，它将冒泡回 saga。
 
 ### `call(fn, ...args)`
 
-Creates an Effect description that instructs the middleware to call the function `fn` with `args` as arguments.
+创建一个 Effect 描述，指示中间件以 `args` 为参数调用函数 `fn`。
 
-- `fn: Function` - A Generator function, or normal function which either returns a Promise as result, or any other value.
-- `args: Array<any>` - An array of values to be passed as arguments to `fn`
+- `fn: Function` - 一个 Generator 函数，或者是一个普通函数，它返回一个 Promise 作为结果，或者任何其他值。
+- `args: Array<any>` - 一个作为参数传递给 `fn` 的值的数组
 
-#### Notes
+#### 注释
 
-`fn` can be either a *normal* or a Generator function.
+`fn` 可以是一个 *普通* 函数或一个 Generator 函数。
 
-The middleware invokes the function and examines its result.
+中间件调用函数并检查其结果。
 
-If the result is an Iterator object, the middleware will run that Generator function, just like it did with the
-startup Generators (passed to the middleware on startup). The parent Generator will be
-suspended until the child Generator terminates normally, in which case the parent Generator
-is resumed with the value returned by the child Generator. Or until the child aborts with some
-error, in which case an error will be thrown inside the parent Generator.
+如果结果是一个迭代器对象，中间件将运行该 Generator 函数，就像它对启动的 Generator 做的那样（在启动时传递给中间件）。父 Generator 将被挂起，直到子 Generator 正常终止，在这种情况下，父 Generator 将以子 Generator 返回的值恢复。或者，直到子 Generator 因某些错误而中止，在这种情况下，将在父 Generator 内部抛出一个错误。
 
-If `fn` is a normal function and returns a Promise, the middleware will suspend the Generator until the Promise is
-settled. After the promise is resolved the Generator is resumed with the resolved value, or if the Promise
-is rejected an error is thrown inside the Generator.
+如果 `fn` 是一个普通函数并返回一个 Promise，中间件将挂起 Generator，直到 Promise 被解决。在 promise 解决后，Generator 会以解决的值恢复，或者如果 Promise 被拒绝，Generator 内部会抛出一个错误。
 
-If the result is not an Iterator object nor a Promise, the middleware will immediately return that value back to the saga,
-so that it can resume its execution synchronously.
+如果结果既不是迭代器对象也不是 Promise，中间件将立即将该值返回给 saga，以便它可以同步地恢复执行。
 
-When an error is thrown inside the Generator, if it has a `try/catch` block surrounding the
-current `yield` instruction, the control will be passed to the `catch` block. Otherwise,
-the Generator aborts with the raised error, and if this Generator was called by another
-Generator, the error will propagate to the calling Generator.
+当在 Generator 内部抛出一个错误时，如果它有一个 `try/catch` 块包围当前的 `yield` 指令，控制权将被传递给 `catch` 块。否则，Generator 将中止并抛出错误，如果这个 Generator 是由另一个 Generator 调用的，错误将传播到调用的 Generator。
 
 ### `call([context, fn], ...args)`
 
-Same as `call(fn, ...args)` but supports passing a `this` context to `fn`. This is useful to
-invoke object methods.
+与 `call(fn, ...args)` 相同，但支持将 `this` 上下文传递给 `fn`。这对于调用对象方法很有用。
 
 ### `call([context, fnName], ...args)`
 
-Same as `call([context, fn], ...args)` but supports passing a `fn` as string. Useful for invoking object's methods, i.e. `yield call([localStorage, 'getItem'], 'redux-saga')`
+与 `call([context, fn], ...args)` 相同，但支持将 `fn` 作为字符串传递。对于调用对象的方法很有用，例如 `yield call([localStorage, 'getItem'], 'redux-saga')`。
 
 ### `call({context, fn}, ...args)`
 
-Same as `call([context, fn], ...args)` but supports passing `context` and `fn` as properties of an object, i.e. `yield call({context: localStorage, fn: localStorage.getItem}, 'redux-saga')`. `fn` can be a string or a function.
+与 `call([context, fn], ...args)` 相同，但支持将 `context` 和 `fn` 作为对象的属性传递，例如 `yield call({context: localStorage, fn: localStorage.getItem}, 'redux-saga')`。`fn` 可以是字符串或函数。
 
 ### `apply(context, fn, [args])`
 
-Alias for `call([context, fn], ...args)`.
+`call([context, fn], ...args)` 的别名。
 
 ### `cps(fn, ...args)`
 
-Creates an Effect description that instructs the middleware to invoke `fn` as a Node style function.
+创建一个 Effect 描述，指示中间件以 Node 风格的函数调用 `fn`。
 
-- `fn: Function` - a Node style function. i.e. a function which accepts in addition to its arguments,
-an additional callback to be invoked by `fn` when it terminates. The callback accepts two parameters,
-where the first parameter is used to report errors while the second is used to report successful results
+- `fn: Function` - 一个 Node 风格的函数。即，一个函数，除了它的参数外，还接受一个额外的回调函数，当 `fn` 结束时被 `fn` 调用。回调函数接受两个参数，其中第一个参数用于报告错误，而第二个参数用于报告成功的结果。
 
-- `args: Array<any>` - an array to be passed as arguments for `fn`
+- `args: Array<any>` - 一个作为 `fn` 的参数的数组。
 
-#### Notes
+#### 注释
 
-The middleware will perform a call `fn(...arg, cb)`. The `cb` is a callback passed by the middleware to
-`fn`. If `fn` terminates normally, it must call `cb(null, result)` to notify the middleware
-of a successful result. If `fn` encounters some error, then it must call `cb(error)` in order to
-notify the middleware that an error has occurred.
+中间件将执行调用 `fn(...arg, cb)`。`cb` 是由中间件传递给 `fn` 的回调。如果 `fn` 正常终止，它必须调用 `cb(null, result)` 来通知中间件成功的结果。如果 `fn` 遇到一些错误，那么它必须调用 `cb(error)` 以通知中间件发生了错误。
 
-The middleware remains suspended until `fn` terminates.
+中间件将保持挂起状态，直到 `fn` 终止。
 
 ### `cps([context, fn], ...args)`
 
-Supports passing a `this` context to `fn` (object method invocation)
+支持将 `this` 上下文传递给 `fn`（对象方法调用）
 
 ### `cps({context, fn}, ...args)`
 
-Same as `cps([context, fn], ...args)` but supports passing `context` and `fn` as properties of an object. `fn` can be a string or a function.
+与 `cps([context, fn], ...args)` 相同，但支持将 `context` 和 `fn` 作为对象的属性传递。`fn` 可以是字符串或函数。
 
 ### `fork(fn, ...args)`
 
-Creates an Effect description that instructs the middleware to perform a *non-blocking call* on `fn`
+创建一个 Effect 描述，指示中间件对 `fn` 执行*非阻塞调用*
 
-#### Arguments
+#### 参数
 
-- `fn: Function` - A Generator function, or normal function which returns a Promise as result
-- `args: Array<any>` - An array of values to be passed as arguments to `fn`
+- `fn: Function` - 一个 Generator 函数，或者是一个普通函数，它返回一个 Promise 作为结果
+- `args: Array<any>` - 一个作为参数传递给 `fn` 的值的数组
 
-returns a [Task](#task) object.
+返回一个 [Task](#task) 对象。
 
-#### Notes
+#### 注释
 
-`fork`, like `call`, can be used to invoke both normal and Generator functions. But, the calls are
-non-blocking, the middleware doesn't suspend the Generator while waiting for the result of `fn`.
-Instead as soon as `fn` is invoked, the Generator resumes immediately.
+`fork`，像 `call` 一样，可以用来调用普通函数和 Generator 函数。但是，调用是非阻塞的，中间件在等待 `fn` 的结果时不会挂起 Generator。相反，一旦 `fn` 被调用，Generator 立即恢复。
 
-`fork`, alongside `race`, is a central Effect for managing concurrency between Sagas.
+`fork`，与 `race` 一起，是管理 Saga 之间并发的核心 Effect。
 
-The result of `yield fork(fn ...args)` is a [Task](#task) object.  An object with some useful
-methods and properties.
+`yield fork(fn ...args)` 的结果是一个 [Task](#task) 对象。一个带有一些有用方法和属性的对象。
 
-All forked tasks are *attached* to their parents. When the parent terminates the execution of its
-own body of instructions, it will wait for all forked tasks to terminate before returning.
+所有 forked 任务都*附加*到它们的父任务。当父任务终止其自身的指令体时，它将等待所有 forked 任务终止后才返回。
 
-#### Error propagation
-Errors from child tasks automatically bubble up to their parents. If any forked task raises an uncaught error, then
-the parent task will abort with the child Error, and the whole Parent's execution tree (i.e. forked tasks + the
-*main task* represented by the parent's body if it's still running) will be cancelled.
+#### 错误传播
+子任务的错误会自动冒泡到它们的父任务。如果任何 forked 任务引发了未捕获的错误，那么父任务将以子任务的错误中止，整个父任务的执行树（即 forked 任务 + 父任务的*主任务*，如果它仍在运行）将被取消。
 
-Cancellation of a forked Task will automatically cancel all forked tasks that are still executing. It'll
-also cancel the current Effect where the cancelled task was blocked (if any).
+取消一个 forked 任务将自动取消所有仍在执行的 forked 任务。它还会取消当前被取消的任务被阻塞的 Effect（如果有的话）。
 
-If a forked task fails *synchronously* (ie: fails immediately after its execution before performing any
-async operation), then no Task is returned, instead the parent will be aborted as soon as possible (since both
-parent and child execute in parallel, the parent will abort as soon as it takes notice of the child failure).
+如果一个 forked 任务*同步*失败（即：在执行任何异步操作之前立即失败），那么不会返回任何任务，相反，父任务将尽快中止（因为父任务和子任务并行执行，父任务将在注意到子任务失败后尽快中止）。
 
-To create *detached* forks, use `spawn` instead.
+要创建*分离*的 fork，使用 `spawn`。
 
 ### `fork([context, fn], ...args)`
 
-Supports invoking forked functions with a `this` context
+支持以 `this` 上下文调用 forked 函数
 
 ### `fork({context, fn}, ...args)`
 
-Same as `fork([context, fn], ...args)` but supports passing `context` and `fn` as properties of an object. `fn` can be a string or a function.
+与 `fork([context, fn], ...args)` 相同，但支持将 `context` 和 `fn` 作为对象的属性传递。`fn` 可以是字符串或函数。
 
 ### `spawn(fn, ...args)`
 
-Same as `fork(fn, ...args)` but creates a *detached* task. A detached task remains independent from its parent and acts like
-a top-level task. The parent will not wait for detached tasks to terminate before returning and all events which may affect the
-parent or the detached task are completely independents (error, cancellation).
+与 `fork(fn, ...args)` 相同，但创建一个*分离*的任务。一个分离的任务与其父任务独立，表现得像一个顶级任务。父任务在返回前不会等待分离的任务终止，所有可能影响父任务或分离任务的事件都是完全独立的（错误，取消）。
 
 ### `spawn([context, fn], ...args)`
 
-Supports spawning functions with a `this` context
+支持以 `this` 上下文调用 spawn 函数
 
 ### `join(task)`
 
-Creates an Effect description that instructs the middleware to wait for the result
-of a previously forked task.
+创建一个 Effect 描述，指示中间件等待之前 forked 任务的结果。
 
-- `task: Task` - A [Task](#task) object returned by a previous `fork`
+- `task: Task` - 由之前的 `fork` 返回的 [Task](#task) 对象
 
-#### Notes
+#### 注释
 
-`join` will resolve to the same outcome of the joined task (success or error). If the joined
-task is cancelled, the cancellation will also propagate to the Saga executing the join
-effect. Similarly, any potential callers of those joiners will be cancelled as well.
+`join` 将解析为与 joined 任务相同的结果（成功或错误）。如果 joined 任务被取消，取消也将传播到执行 join effect 的 Saga。同样，那些可能的 joiners 的任何潜在调用者也将被取消。
 
 ### `join([...tasks])`
 
-Creates an Effect description that instructs the middleware to wait for the results of previously forked tasks.
+创建一个 Effect 描述，指示中间件等待之前 forked 任务的结果。
 
-- `tasks: Array<Task>` - A [Task](#task) is the object returned by a previous `fork`
+- `tasks: Array<Task>` - [Task](#task) 是由之前的 `fork` 返回的对象
 
-#### Notes
+#### 注释
 
-It wraps the array of tasks in [join effects](#jointask), roughly becoming the equivalent of
-`yield tasks.map(t => join(t))`.
+它将任务数组包装在[join effects](#jointask)中，大致相当于
+`yield tasks.map(t => join(t))`。
 
 ### `cancel(task)`
 
-Creates an Effect description that instructs the middleware to cancel a previously forked task.
+创建一个Effect描述，指示中间件取消之前分叉的任务。
 
-- `task: Task` - A [Task](#task) object returned by a previous `fork`
+- `task: Task` - 由之前的`fork`返回的[Task](#task)对象
 
-#### Notes
+#### 注释
 
-To cancel a running task, the middleware will invoke `return` on the underlying Generator
-object. This will cancel the current Effect in the task and jump to the finally block (if defined).
+要取消正在运行的任务，中间件将在底层的生成器对象上调用`return`。这将取消任务中的当前Effect，并跳转到finally块（如果定义了的话）。
 
-Inside the finally block, you can execute any cleanup logic or dispatch some action to keep the
-store in a consistent state (e.g. reset the state of a spinner to false when an ajax request
-is cancelled). You can check inside the finally block if a Saga was cancelled by issuing
-a `yield cancelled()`.
+在finally块内部，你可以执行任何清理逻辑或者派发一些动作来保持存储在一致的状态（例如，当一个ajax请求被取消时，重置一个旋转器的状态为false）。你可以在finally块内部通过发出`yield cancelled()`来检查一个Saga是否被取消。
 
-Cancellation propagates downward to child sagas. When cancelling a task, the middleware will also
-cancel the current Effect (where the task is currently blocked). If the current Effect
-is a call to another Saga, it will be also cancelled. When cancelling a Saga, all *attached
-forks* (sagas forked using `yield fork()`) will be cancelled. This means that cancellation
-effectively affects the whole execution tree that belongs to the cancelled task.
+取消会向下传播到子sagas。当取消一个任务时，中间件也会取消当前的Effect（任务当前被阻塞的地方）。如果当前的Effect是对另一个Saga的调用，它也会被取消。当取消一个Saga时，所有*附加的分叉*（使用`yield fork()`分叉的sagas）都会被取消。这意味着取消实际上影响到属于被取消任务的整个执行树。
 
-`cancel` is a non-blocking Effect. i.e. the Saga executing it will resume immediately after
-performing the cancellation.
+`cancel`是一个非阻塞的Effect。即执行它的Saga将在执行取消后立即恢复。
 
-For functions which return Promise results, you can plug your own cancellation logic
-by attaching a `[CANCEL]` to the promise.
+对于返回Promise结果的函数，你可以通过在promise上附加一个`[CANCEL]`来插入你自己的取消逻辑。
 
-The following example shows how to attach cancellation logic to a Promise result:
+以下示例显示了如何将取消逻辑附加到Promise结果：
 
 ```javascript
 import { CANCEL } from 'redux-saga'
@@ -516,25 +471,25 @@ function* mySaga() {
 }
 ```
 
-redux-saga will automatically cancel jqXHR objects using their `abort` method.
+redux-saga将自动使用它们的`abort`方法取消jqXHR对象。
 
 ### `cancel([...tasks])`
 
-Creates an Effect description that instructs the middleware to cancel previously forked tasks.
+创建一个Effect描述，指示中间件取消之前分叉的任务。
 
-- `tasks: Array<Task>` - A [Task](#task) is the object returned by a previous `fork`
+- `tasks: Array<Task>` - [Task](#task)是之前`fork`返回的对象
 
-#### Notes
+#### 注释
 
-It wraps the array of tasks in [cancel effects](#canceltask), roughly becoming the equivalent of
-`yield tasks.map(t => cancel(t))`.
+它将任务数组包装在[cancel effects](#canceltask)中，大致相当于
+`yield tasks.map(t => cancel(t))`。
 
 ### `cancel()`
 
-Creates an Effect description that instructs the middleware to cancel a task in which it has been yielded (self-cancellation).
-It allows to reuse destructor-like logic inside a `finally` blocks for both outer (`cancel(task)`) and self (`cancel()`) cancellations.
+创建一个Effect描述，指示中间件取消其中已产生的任务（自我取消）。
+它允许在`finally`块中重用析构器类似的逻辑，用于外部（`cancel(task)`）和自我（`cancel()`）取消。
 
-#### Example
+#### 示例
 
 ```javascript
 function* deleteRecord({ payload }) {
@@ -547,10 +502,10 @@ function* deleteRecord({ payload }) {
       yield cancel()
     }
   } catch(e) {
-    // handle failure
+    // 处理失败
   } finally {
     if (yield cancelled()) {
-      // shared cancellation logic
+      // 共享取消逻辑
       yield put(actions.deleteRecord.cancel(payload))
     }
   }
@@ -559,32 +514,22 @@ function* deleteRecord({ payload }) {
 
 ### `select(selector, ...args)`
 
-Creates an effect that instructs the middleware to invoke the provided selector on the
-current Store's state (i.e. returns the result of `selector(getState(), ...args)`).
+创建一个效果，指示中间件在当前Store的状态上调用提供的选择器（即返回`selector(getState(), ...args)`的结果）。
 
-- `selector: Function` - a function `(state, ...args) => args`. It takes the
-current state and optionally some arguments and returns a slice of the current Store's state
+- `selector: Function` - 函数 `(state, ...args) => args`。它接受当前状态和一些可选参数，并返回当前Store状态的一个切片
 
-- `args: Array<any>` - optional arguments to be passed to the selector in addition of `getState`.
+- `args: Array<any>` - 要传递给选择器的可选参数，除了`getState`。
 
-If `select` is called without argument (i.e. `yield select()`) then the effect is resolved
-with the entire state (the same result of a `getState()` call).
+如果`select`没有参数调用（即`yield select()`），那么效果将解析为整个状态（与`getState()`调用的结果相同）。
 
-> It's important to note that when an action is dispatched to the store, the middleware first
-forwards the action to the reducers and then notifies the Sagas. This means that when you query the
-Store's State, you get the State **after** the action has been applied.
-> However, this behavior is only guaranteed if all subsequent middlewares call `next(action)` synchronously.  If any subsequent middleware calls `next(action)` asynchronously (which is unusual but possible), then the sagas will get the state from **before** the action is applied.  Therefore it is recommended to review the source of each subsequent middleware to ensure it calls `next(action)` synchronously, or else ensure that redux-saga is the last middleware in the call chain.
+> 重要的是要注意，当一个动作被分派到存储器时，中间件首先将动作转发给reducers，然后通知Sagas。这意味着当你查询Store的State时，你得到的是动作应用**后**的State。
+> 然而，这种行为只有在所有后续的中间件同步调用`next(action)`时才能保证。如果任何后续的中间件异步调用`next(action)`（这是不寻常的，但是可能的），那么sagas将得到动作应用**前**的状态。因此，建议审查每个后续中间件的源代码，以确保它同步调用`next(action)`，或者确保redux-saga是调用链中的最后一个中间件。
 
-#### Notes
+#### 注释
 
-Preferably, a Saga should be autonomous and should not depend on the Store's state. This makes
-it easy to modify the state implementation without affecting the Saga code. A saga should preferably
-depend only on its own internal control state when possible. But sometimes, one could
-find it more convenient for a Saga to query the state instead of maintaining the needed data by itself
-(for example, when a Saga duplicates the logic of invoking some reducer to compute a state that was
-already computed by the Store).
+最好，一个Saga应该是自主的，不应该依赖于Store的状态。这使得在不影响Saga代码的情况下，可以很容易地修改状态实现。一个saga最好只依赖于它自己的内部控制状态。但是有时候，人们可能会发现让Saga查询状态，而不是自己维护所需的数据更方便（例如，当一个Saga复制调用某个reducer的逻辑来计算已经由Store计算出的状态时）。
 
-For example, suppose we have this state shape in our application:
+例如，假设我们在应用程序中有这样的状态形状：
 
 ```javascript
 state = {
@@ -592,14 +537,14 @@ state = {
 }
 ```
 
-We can create a *selector*, i.e. a function which knows how to extract the `cart` data from the State:
+我们可以创建一个*选择器*，即一个知道如何从State中提取`cart`数据的函数：
 
 `./selectors`
 ```javascript
 export const getCart = state => state.cart
 ```
 
-Then we can use that selector from inside a Saga using the `select` Effect:
+然后我们可以在Saga中使用`select` Effect来使用该选择器：
 
 `./sagas.js`
 ```javascript
@@ -607,10 +552,10 @@ import { take, fork, select } from 'redux-saga/effects'
 import { getCart } from './selectors'
 
 function* checkout() {
-  // query the state using the exported selector
+  // 使用导出的选择器查询状态
   const cart = yield select(getCart)
 
-  // ... call some API endpoint then dispatch a success/error action
+  // ... 调用一些API端点，然后分派一个成功/错误动作
 }
 
 export default function* rootSaga() {
@@ -621,20 +566,18 @@ export default function* rootSaga() {
 }
 ```
 
-`checkout` can get the needed information directly by using `select(getCart)`. The Saga is coupled only with the `getCart` selector. If we have many Sagas (or React Components) that needs to access the `cart` slice, they will all be coupled to the same function `getCart`. And if we now change the state shape, we need only to update `getCart`.
+`checkout`可以通过使用`select(getCart)`直接获取所需的信息。Saga只与`getCart`选择器耦合。如果我们有许多需要访问`cart`切片的Sagas（或React组件），他们都将耦合到同一个函数`getCart`。现在，如果我们改变状态形状，我们只需要更新`getCart`。
 
 ### `actionChannel(pattern, [buffer])`
 
-Creates an effect that instructs the middleware to queue the actions matching `pattern` using an event channel. Optionally, you can provide a buffer to control buffering of the queued actions.
+创建一个效果，指示中间件使用事件通道对匹配`pattern`的操作进行排队。可选地，您可以提供一个缓冲区来控制排队操作的缓冲。
 
-- `pattern:` - see API for `take(pattern)`
-- `buffer: Buffer` - a [Buffer](#buffer) object
+- `pattern:` - 参见 `take(pattern)` 的API
+- `buffer: Buffer` - 一个 [Buffer](#buffer) 对象
 
-#### Example
+#### 示例
 
-The following code creates a channel to buffer all `USER_REQUEST` actions. Note that even the Saga may be blocked
-on the `call` effect. All actions that come while it's blocked are automatically buffered. This causes the Saga
-to execute the API calls one at a time
+以下代码创建了一个通道，用于缓冲所有的 `USER_REQUEST` 操作。注意，即使 Saga 可能在 `call` 效果上被阻塞。所有在它被阻塞时来的操作都会自动被缓冲。这导致 Saga 一次执行一个 API 调用。
 
 ```javascript
 import { actionChannel, call } from 'redux-saga/effects'
@@ -651,14 +594,13 @@ function* takeOneAtMost() {
 
 ### `flush(channel)`
 
-Creates an effect that instructs the middleware to flush all buffered items from the channel. Flushed items are returned back to the saga, so they can be utilized if needed.
+创建一个效果，指示中间件从通道中刷新所有缓冲的项目。刷新的项目被返回给 saga，因此如果需要，它们可以被利用。
 
-- `channel: Channel` - a [`Channel`](#channel) Object.
+- `channel: Channel` - 一个 [`Channel`](#channel) 对象。
 
-#### Example
+#### 示例
 
 ```javascript
-
 function* saga() {
   const chan = yield actionChannel('ACTION')
 
@@ -677,55 +619,50 @@ function* saga() {
 
 ### `cancelled()`
 
-Creates an effect that instructs the middleware to return whether this generator has been cancelled. Typically
-you use this Effect in a finally block to run Cancellation specific code
+创建一个效果，指示中间件返回此生成器是否已被取消。通常，您在 finally 块中使用此效果来运行取消特定的代码。
 
-#### Example
+#### 示例
 
 ```javascript
-
 function* saga() {
   try {
     // ...
   } finally {
     if (yield cancelled()) {
-      // logic that should execute only on Cancellation
+      // 只在取消时执行的逻辑
     }
-    // logic that should execute in all situations (e.g. closing a channel)
+    // 在所有情况下都应执行的逻辑（例如，关闭一个通道）
   }
 }
 ```
 
 ### `setContext(props)`
 
-Creates an effect that instructs the middleware to update its own context. This effect extends
-saga's context instead of replacing it.
+创建一个效果，指示中间件更新其自身的上下文。此效果扩展了 saga 的上下文，而不是替换它。
 
 ### `getContext(prop)`
 
-Creates an effect that instructs the middleware to return a specific property of saga's context.
+创建一个效果，指示中间件返回 saga 上下文的特定属性。
 
 ### `delay(ms, [val])`
 
-Returns an effect descriptor to block execution for `ms` milliseconds and return `val` value.
+返回一个效果描述符，以阻塞执行 `ms` 毫秒并返回 `val` 值。
 
 ### `throttle(ms, pattern, saga, ...args)`
 
-Spawns a `saga` on an action dispatched to the Store that matches `pattern`. After spawning a task it's still accepting incoming actions into the underlying `buffer`, keeping at most 1 (the most recent one), but in the same time holding up with spawning new task for `ms` milliseconds (hence its name - `throttle`). Purpose of this is to ignore incoming actions for a given period of time while processing a task.
+在匹配 `pattern` 的操作被分派到 Store 时，生成一个 `saga`。生成任务后，它仍然接受进入底层 `buffer` 的操作，最多保留 1 个（最近的一个），但同时在 `ms` 毫秒内暂停生成新任务（因此其名称 - `throttle`）。这样做的目的是在处理任务的同时忽略给定时间段内的进入操作。
 
-- `ms: Number` - length of a time window in milliseconds during which actions will be ignored after the action starts processing
+- `ms: Number` - 在操作开始处理后将忽略操作的时间窗口长度（以毫秒为单位）
 
-- `pattern: String | Array | Function` - for more information see docs for [`take(pattern)`](#takepattern)
+- `pattern: String | Array | Function` - 更多信息请参见 [`take(pattern)`](#takepattern) 的文档
 
-- `saga: Function` - a Generator function
+- `saga: Function` - 一个生成器函数
 
-- `args: Array<any>` - arguments to be passed to the started task. `throttle` will add the
-incoming action to the argument list (i.e. the action will be the last argument provided to `saga`)
+- `args: Array<any>` - 要传递给启动任务的参数。`throttle` 将添加进入操作到参数列表（即，操作将是提供给 `saga` 的最后一个参数）
 
-#### Example
+#### 示例
 
-In the following example, we create a basic task `fetchAutocomplete`. We use `throttle` to
-start a new `fetchAutocomplete` task on dispatched `FETCH_AUTOCOMPLETE` action. However since `throttle` ignores consecutive `FETCH_AUTOCOMPLETE` for some time, we ensure that user won't flood our server with requests.
+在以下示例中，我们创建了一个基本任务 `fetchAutocomplete`。我们使用 `throttle` 在分派 `FETCH_AUTOCOMPLETE` 操作时启动新的 `fetchAutocomplete` 任务。然而，由于 `throttle` 在一段时间内忽略连续的 `FETCH_AUTOCOMPLETE`，我们确保用户不会用请求淹没我们的服务器。
 
 ```javascript
 import { call, put, throttle } from `redux-saga/effects`
@@ -740,9 +677,9 @@ function* throttleAutocomplete() {
 }
 ```
 
-#### Notes
+#### 注释
 
-`throttle` is a high-level API built using `take`, `fork` and `actionChannel`. Here is how the helper could be implemented using the low-level Effects
+`throttle` 是使用 `take`，`fork` 和 `actionChannel` 构建的高级 API。以下是如何使用低级效果实现该助手
 
 ```javascript
 const throttle = (ms, pattern, task, ...args) => fork(function*() {
@@ -757,25 +694,25 @@ const throttle = (ms, pattern, task, ...args) => fork(function*() {
 ```
 
 ### `throttle(ms, channel, saga, ...args)`
-You can also handle a channel as argument and the behaviour is the same as [`throttle(ms, pattern, saga, ..args)`](#throttlems-pattern-saga-args)
+你也可以将通道作为参数处理，其行为与 [`throttle(ms, pattern, saga, ..args)`](#throttlems-pattern-saga-args) 相同
 
 ### `debounce(ms, pattern, saga, ...args)`
 
-Spawns a `saga` on an action dispatched to the Store that matches `pattern`. Saga will be called after it stops taking `pattern` actions for `ms` milliseconds. Purpose of this is to prevent calling saga until the actions are settled off.
+在匹配 `pattern` 的动作被分发到 Store 后，生成一个 `saga`。在 `ms` 毫秒内停止接收 `pattern` 动作后，将调用 Saga。这样做的目的是防止在动作被解决之前调用 saga。
 
-- `ms: Number` - defines how many milliseconds should elapse since the last time `pattern` action was fired to call the `saga`
+- `ms: Number` - 定义从最后一次触发 `pattern` 动作到调用 `saga` 应经过多少毫秒
 
-- `pattern: String | Array | Function` - for more information see docs for [`take(pattern)`](#takepattern)
+- `pattern: String | Array | Function` - 更多信息请参见 [`take(pattern)`](#takepattern) 的文档
 
-- `saga: Function` - a Generator function
+- `saga: Function` - 一个 Generator 函数
 
-- `args: Array<any>` - arguments to be passed to the started task. `debounce` will add the
-incoming action to the argument list (i.e. the action will be the last argument provided to `saga`)
+- `args: Array<any>` - 要传递给启动任务的参数。`debounce` 将把
+传入的动作添加到参数列表中（即，动作将是提供给 `saga` 的最后一个参数）
 
-#### Example
+#### 示例
 
-In the following example, we create a basic task `fetchAutocomplete`. We use `debounce` to
-delay calling `fetchAutocomplete` saga until we stop receive any `FETCH_AUTOCOMPLETE` events for at least `1000` ms.
+在以下示例中，我们创建了一个基本任务 `fetchAutocomplete`。我们使用 `debounce` 来
+延迟调用 `fetchAutocomplete` saga，直到我们停止接收任何 `FETCH_AUTOCOMPLETE` 事件至少 `1000` 毫秒。
 
 ```javascript
 import { call, put, debounce } from `redux-saga/effects`
@@ -790,9 +727,9 @@ function* debounceAutocomplete() {
 }
 ```
 
-#### Notes
+#### 注释
 
-`debounce` is a high-level API built using `take`, `delay`, `race` and `fork`. Here is how the helper could be implemented using the low-level Effects
+`debounce` 是使用 `take`、`delay`、`race` 和 `fork` 构建的高级 API。以下是如何使用低级效果实现 helper 的方法
 
 ```javascript
 const debounce = (ms, pattern, task, ...args) => fork(function*() {
@@ -817,20 +754,20 @@ const debounce = (ms, pattern, task, ...args) => fork(function*() {
 ```
 
 ### `debounce(ms, channel, saga, ...args)`
-You can also handle a channel as argument and the behaviour is the same as [`debounce(ms, pattern, saga, ..args)`](#debouncems-pattern-saga-args)
+你也可以将通道作为参数处理，其行为与 [`debounce(ms, pattern, saga, ..args)`](#debouncems-pattern-saga-args) 相同
 
 ### `retry(maxTries, delay, fn, ...args)`
-Creates an Effect description that instructs the middleware to call the function `fn` with `args` as arguments.
-In case of failure will try to make another call after `delay` milliseconds, if a number of attempts < `maxTries`.
+创建一个 Effect 描述，指示中间件用 `args` 作为参数调用函数 `fn`。
+如果失败，将在 `delay` 毫秒后尝试再次调用，如果尝试次数 < `maxTries`。
 
-- `maxTries: Number` - maximum calls count.
-- `delay: Number` - length of a time window in milliseconds between `fn` calls.
-- `fn: Function` - A Generator function, or normal function which either returns a Promise as a result, or any other value.
-- `args: Array<any>` - An array of values to be passed as arguments to `fn`
+- `maxTries: Number` - 最大调用次数。
+- `delay: Number` - `fn` 调用之间的时间窗口长度（以毫秒为单位）。
+- `fn: Function` - 一个 Generator 函数，或者是返回 Promise 作为结果的普通函数，或者是任何其他值。
+- `args: Array<any>` - 要作为参数传递给 `fn` 的值数组
 
-#### Example
+#### 示例
 
-In the following example, we create a basic task `retrySaga`. We use `retry` to try to fetch our API 3 times with 10 second interval. If `request` fails first time than `retry` will call `request` one more time while calls count less than 3.
+在以下示例中，我们创建了一个基本任务 `retrySaga`。我们使用 `retry` 来尝试用 10 秒的间隔调用我们的 API 3 次。如果 `request` 第一次失败，那么 `retry` 将再次调用 `request`，只要调用次数少于 3 次。
 
 ```javascript
 import { put, retry } from 'redux-saga/effects'
@@ -847,24 +784,23 @@ function* retrySaga(data) {
 }
 ```
 
-#### Notes
-`retry` is a high-level API built using `delay` and `call`. [Here is how the helper could be implemented using the low-level Effects](/docs/recipes/#retrying-xhr-calls)
+#### 注释
+`retry` 是使用 `delay` 和 `call` 构建的高级 API。[这是如何使用低级效果实现 helper 的方法](/docs/recipes/#retrying-xhr-calls)
 
-## Effect combinators
+## Effect 组合器
 
 ### `race(effects)`
 
-Creates an Effect description that instructs the middleware to run a *Race* between
-multiple Effects (this is similar to how [`Promise.race([...])`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise/race) behaves).
+创建一个 Effect 描述，指示中间件在多个 Effects 之间运行一个 *Race*（这类似于 [`Promise.race([...])`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise/race) 的行为）。
 
-`effects: Object` - a dictionary Object of the form `{label: effect, ...}`
+`effects: Object` - 形式为 `{label: effect, ...}` 的字典对象
 
-#### Example
+#### 示例
 
-The following example runs a race between two effects:
+以下示例在两个效果之间进行竞赛：
 
-1. A call to a function `fetchUsers` which returns a Promise
-2. A `CANCEL_FETCH` action which may be eventually dispatched on the Store
+1. 调用一个函数 `fetchUsers`，该函数返回一个 Promise
+2. 可能最终在 Store 上分派的 `CANCEL_FETCH` 操作
 
 ```javascript
 import { take, call, race } from `redux-saga/effects`
@@ -878,28 +814,26 @@ function* fetchUsersSaga() {
 }
 ```
 
-If `call(fetchUsers)` resolves first, the result of `race` will be an object
-with a single keyed object `{response: result}` where `result` is the resolved result of `fetchUsers`.
+如果 `call(fetchUsers)` 首先解析，`race` 的结果将是一个带有单键对象 `{response: result}` 的对象，其中 `result` 是 `fetchUsers` 的解析结果。
 
-If `call(fetchUsers)` rejects first, `race` throws the rejection reason.
+如果 `call(fetchUsers)` 首先拒绝，`race` 会抛出拒绝原因。
 
-If an action of type `CANCEL_FETCH` is dispatched on the Store before `fetchUsers` completes, the result
-will be a single keyed object `{cancel: action}`, where action is the dispatched action.
+如果在 `fetchUsers` 完成之前在 Store 上分派了类型为 `CANCEL_FETCH` 的操作，结果将是一个带有单键对象 `{cancel: action}` 的对象，其中 action 是分派的操作。
 
-#### Notes
+#### 注释
 
-When resolving a `race`, the middleware automatically cancels all the losing Effects.
+在解析 `race` 时，中间件会自动取消所有失败的 Effects。
 
-### `race([...effects]) (with Array)`
+### `race([...effects]) (带数组)`
 
-The same as [`race(effects)`](#raceeffects) but lets you pass in an array of effects.
+与 [`race(effects)`](#raceeffects) 相同，但允许你传入一个效果数组。
 
-#### Example
+#### 示例
 
-The following example runs a race between two effects:
+以下示例在两个效果之间进行竞赛：
 
-1. A call to a function `fetchUsers` which returns a Promise
-2. A `CANCEL_FETCH` action which may be eventually dispatched on the Store
+1. 调用一个函数 `fetchUsers`，该函数返回一个 Promise
+2. 可能最终在 Store 上分派的 `CANCEL_FETCH` 操作
 
 ```javascript
 import { take, call, race } from `redux-saga/effects`
@@ -913,21 +847,19 @@ function* fetchUsersSaga() {
 }
 ```
 
-If `call(fetchUsers)` resolves first, `response` will be an result of `fetchUsers` and `cancel` will be `undefined`.
+如果 `call(fetchUsers)` 首先解析，`response` 将是 `fetchUsers` 的结果，`cancel` 将是 `undefined`。
 
-If `call(fetchUsers)` rejects first, `race` throws the rejection reason.
+如果 `call(fetchUsers)` 首先拒绝，`race` 会抛出拒绝原因。
 
-If an action of type `CANCEL_FETCH` is dispatched on the Store before `fetchUsers` completes, `response` will be
-`undefined` and `cancel` will be the dispatched action.
+如果在 `fetchUsers` 完成之前在 Store 上分派了类型为 `CANCEL_FETCH` 的操作，`response` 将是 `undefined`，`cancel` 将是分派的操作。
 
-### `all([...effects]) - parallel effects`
+### `all([...effects]) - 并行效果`
 
-Creates an Effect description that instructs the middleware to run multiple Effects
-in parallel and wait for all of them to complete. It's quite the corresponding API to standard [`Promise#all`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise/all).
+创建一个 Effect 描述，指示中间件并行运行多个 Effects，并等待它们全部完成。这与标准的 [`Promise#all`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise/all) API 相对应。
 
-#### Example
+#### 示例
 
-The following example runs two blocking calls in parallel:
+以下示例并行运行两个阻塞调用：
 
 ```javascript
 import { fetchCustomers, fetchProducts } from './path/to/api'
@@ -943,13 +875,13 @@ function* mySaga() {
 
 ### `all(effects)`
 
-The same as [`all([...effects])`](#alleffects-parallel-effects) but lets you to pass in a dictionary object of effects with labels, just like [`race(effects)`](#raceeffects)
+与 [`all([...effects])`](#alleffects-parallel-effects) 相同，但允许你传入带有标签的效果字典对象，就像 [`race(effects)`](#raceeffects)
 
-- `effects: Object` - a dictionary Object of the form `{label: effect, ...}`
+- `effects: Object` - 形式为 `{label: effect, ...}` 的字典对象
 
-#### Example
+#### 示例
 
-The following example runs two blocking calls in parallel:
+以下示例并行运行两个阻塞调用：
 
 ```javascript
 import { fetchCustomers, fetchProducts } from './path/to/api'
@@ -963,222 +895,208 @@ function* mySaga() {
 }
 ```
 
-#### Notes
+#### 注释
 
-When running Effects in parallel, the middleware suspends the Generator until one of the following occurs:
+在并行运行 Effects 时，中间件会挂起 Generator，直到发生以下情况之一：
 
-- All the Effects completed with success: resumes the Generator with an array containing the results of all Effects.
+- 所有的 Effects 都成功完成：用包含所有 Effects 结果的数组恢复 Generator。
 
-- One of the Effects was rejected before all the effects complete: throws the rejection error inside the Generator.
+- 在所有效果完成之前，有一个效果被拒绝：在 Generator 内部抛出拒绝错误。
 
-## Interfaces
+## 接口
 
-### Task
+### 任务
 
-The Task interface specifies the result of running a Saga using `fork`, `middleware.run` or `runSaga`.
+任务接口指定了使用 `fork`，`middleware.run` 或 `runSaga` 运行 Saga 的结果。
 
 <table id="task-descriptor">
   <tr>
-    <th>method</th>
-    <th>return value</th>
+    <th>方法</th>
+    <th>返回值</th>
   </tr>
   <tr>
     <td>task.isRunning()</td>
-    <td>true if the task hasn't yet returned or thrown an error</td>
+    <td>如果任务尚未返回或抛出错误，则为 true</td>
   </tr>
   <tr>
     <td>task.isCancelled()</td>
-    <td>true if the task has been cancelled</td>
+    <td>如果任务已被取消，则为 true</td>
   </tr>
   <tr>
     <td>task.result()</td>
-    <td>task return value. `undefined` if task is still running</td>
+    <td>任务的返回值。如果任务仍在运行，则为 `undefined`</td>
   </tr>
   <tr>
     <td>task.error()</td>
-    <td>task thrown error. `undefined` if task is still running</td>
+    <td>任务抛出的错误。如果任务仍在运行，则为 `undefined`</td>
   </tr>
   <tr>
     <td>task.toPromise()</td>
     <td>
-      a Promise which is either:
+      一个 Promise，它可能是：
         <ul>
-          <li>resolved with task's return value</li>
-          <li>rejected with task's thrown error</li>
+          <li>用任务的返回值解析的</li>
+          <li>用任务抛出的错误拒绝的</li>
         </ul>
       </td>
   </tr>
   <tr>
     <td>task.cancel()</td>
-    <td>Cancels the task (If it is still running)</td>
+    <td>取消任务（如果它仍在运行）</td>
   </tr>
 </table>
 
-### Channel
+### 通道
 
-A channel is an object used to send and receive messages between tasks. Messages from senders are queued until an interested receiver request a message, and registered receiver is queued until a message is available.
+通道是一个用于在任务之间发送和接收消息的对象。发送者的消息会被排队，直到有感兴趣的接收者请求消息，而注册的接收者会被排队，直到有消息可用。
 
-Every channel has an underlying buffer which defines the buffering strategy (fixed size, dropping, sliding)
+每个通道都有一个底层缓冲区，该缓冲区定义了缓冲策略（固定大小，丢弃，滑动）
 
-The Channel interface defines 3 methods: `take`, `put` and `close`
+通道接口定义了3个方法：`take`，`put` 和 `close`
 
-`Channel.take(callback):` used to register a taker. The take is resolved using the following rules
+`Channel.take(callback):` 用于注册一个接收者。接收者的解决遵循以下规则
 
-- If the channel has buffered messages, then `callback` will be invoked with the next message from the underlying buffer (using `buffer.take()`)
-- If the channel is closed and there are no buffered messages, then `callback` is invoked with `END`
-- Otherwise`callback` will be queued until a message is put into the channel
+- 如果通道有缓冲的消息，那么`callback`将会用底层缓冲区的下一条消息（使用`buffer.take()`）来调用
+- 如果通道已关闭且没有缓冲的消息，那么`callback`将会用`END`来调用
+- 否则`callback`将会排队，直到有消息被放入通道
 
-`Channel.put(message):` Used to put message on the buffer. The put will be handled using the following rules
+`Channel.put(message):` 用于在缓冲区放入消息。放入将会按照以下规则处理
 
-- If the channel is closed, then the put will have no effect.
-- If there are pending takers, then invoke the oldest taker with the message.
-- Otherwise put the message on the underlying buffer
+- 如果通道已关闭，那么放入将不会有任何效果
+- 如果有待处理的接收者，那么用消息调用最旧的接收者
+- 否则将消息放入底层缓冲区
 
-`Channel.flush(callback):` Used to extract all buffered messages from the channel. The flush is resolved using the following rules
+`Channel.flush(callback):` 用于从通道提取所有缓冲的消息。刷新将按照以下规则解决
 
-- If the channel is closed and there are no buffered messages, then `callback` is invoked with `END`
-- Otherwise `callback` is invoked with all buffered messages.
+- 如果通道已关闭且没有缓冲的消息，那么`callback`将会用`END`来调用
+- 否则`callback`将会用所有缓冲的消息来调用
 
-`Channel.close():` closes the channel which means no more puts will be allowed. All pending takers will be invoked with `END`.
+`Channel.close():` 关闭通道，这意味着不再允许放入。所有待处理的接收者将会用`END`来调用。
 
-### Buffer
+### 缓冲区
 
-Used to implement the buffering strategy for a channel. The Buffer interface defines 3 methods: `isEmpty`, `put` and `take`
+用于为通道实现缓冲策略。缓冲区接口定义了3个方法：`isEmpty`，`put` 和 `take`
 
-- `isEmpty()`: returns true if there are no messages on the buffer. A channel calls this method whenever a new taker is registered
-- `put(message)`: used to put new message in the buffer. Note the Buffer can choose to not store the message
-(e.g. a dropping buffer can drop any new message exceeding a given limit)
-- `take()` used to retrieve any buffered message. Note the behavior of this method has to be consistent with `isEmpty`
+- `isEmpty()`: 如果缓冲区没有消息，则返回true。每当注册新的接收者时，通道都会调用此方法
+- `put(message)`: 用于在缓冲区放入新消息。注意缓冲区可以选择不存储消息（例如，超过给定限制的新消息可以被丢弃缓冲区）
+- `take()`: 用于检索任何缓冲的消息。注意，此方法的行为必须与`isEmpty`一致
 
 ### SagaMonitor
 
-Used by the middleware to dispatch monitoring events. Actually the middleware dispatches 6 events:
+由中间件使用，以分派监视事件。实际上，中间件分派了6个事件：
 
-- When a root saga is started (via `runSaga` or `sagaMiddleware.run`) the middleware invokes `sagaMonitor.rootSagaStarted`
+- 当根saga启动时（通过`runSaga`或`sagaMiddleware.run`），中间件调用`sagaMonitor.rootSagaStarted`
 
-- When an effect is triggered (via `yield someEffect`) the middleware invokes `sagaMonitor.effectTriggered`
+- 当触发效果时（通过`yield someEffect`），中间件调用`sagaMonitor.effectTriggered`
 
-- If the effect is resolved with success the middleware invokes `sagaMonitor.effectResolved`
+- 如果效果成功解决，中间件调用`sagaMonitor.effectResolved`
 
-- If the effect is rejected with an error the middleware invokes `sagaMonitor.effectRejected`
+- 如果效果被错误拒绝，中间件调用`sagaMonitor.effectRejected`
 
-- If the effect is cancelled the middleware invokes `sagaMonitor.effectCancelled`
+- 如果效果被取消，中间件调用`sagaMonitor.effectCancelled`
 
-- Finally, the middleware invokes `sagaMonitor.actionDispatched` when a Redux action is dispatched.
+- 最后，当分派Redux操作时，中间件调用`sagaMonitor.actionDispatched`
 
-Below the signature for each method
+以下是每个方法的签名
 
-- `sagaMonitor.rootSagaStarted(options)` : where options is an object with the following fields
+- `sagaMonitor.rootSagaStarted(options)`：其中options是一个具有以下字段的对象
 
-  - `effectId` : Number - Unique ID assigned to this root saga execution
+  - `effectId`：数字 - 分配给此根saga执行的唯一ID
 
-  - `saga` : Function - The generator function that starts to run
+  - `saga`：函数 - 开始运行的生成器函数
 
-  - `args` : Array - The arguments passed to the generator function
+  - `args`：数组 - 传递给生成器函数的参数
 
 - `effectTriggered(options)`
 
-  - `effectId` : Number - Unique ID assigned to the yielded effect
+  - `effectId`：数字 - 分配给产生的效果的唯一ID
 
-  - `parentEffectId` : Number - ID of the parent Effect. In the case of a `race` or `parallel` effect, all
-  effects yielded inside will have the direct race/parallel effect as a parent. In case of a top-level effect, the
-  parent will be the containing Saga
+  - `parentEffectId`：数字 - 父效果的ID。在`race`或`parallel`效果的情况下，内部产生的所有效果都将直接将race/parallel效果作为父级。在顶级效果的情况下，父级将是包含的Saga
 
-  - `label` : String - In case of a `race`/`all` effect, all child effects will be assigned as label the corresponding
-  keys of the object passed to `race`/`all`
+  - `label`：字符串 - 在`race`/`all`效果的情况下，所有子效果都将被分配为标签，对应于传递给`race`/`all`的对象的键
 
-  - `effect` : Object - the yielded effect itself
+  - `effect`：对象 - 产生的效果本身
 
 - `effectResolved(effectId, result)`
 
-    - `effectId` : Number - The ID of the yielded effect
+    - `effectId`：数字 - 产生的效果的ID
 
-    - `result` : any - The result of the successful resolution of the effect. In case of `fork` or `spawn` effects,
-    the result will be a `Task` object.
+    - `result`：任何 - 效果成功解决的结果。在`fork`或`spawn`效果的情况下，结果将是一个`Task`对象。
 
 - `effectRejected(effectId, error)`
 
-    - `effectId` : Number - The ID of the yielded effect
+    - `effectId`：数字 - 产生的效果的ID
 
-    - `error` : any - Error raised with the rejection of the effect
+    - `error`：任何 - 与效果的拒绝一起引发的错误
 
 - `effectCancelled(effectId)`
 
-    - `effectId` : Number - The ID of the yielded effect
+    - `effectId`：数字 - 产生的效果的ID
 
 - `actionDispatched(action)`
 
-    - `action` : Object - The dispatched Redux action. If the action was dispatched by a Saga
-    then the action will have a property `SAGA_ACTION` set to true (`SAGA_ACTION` can be imported from
-    `@redux-saga/symbols`).
+    - `action`：对象 - 分派的Redux操作。如果操作是由Saga分派的，则操作将具有一个属性`SAGA_ACTION`设置为true（`SAGA_ACTION`可以从`@redux-saga/symbols`导入）。
 
 
-## External API
+## 外部 API
 ------------------------
 
 ### `runSaga(options, saga, ...args)`
 
-Allows starting sagas outside the Redux middleware environment. Useful if you want to
-connect a Saga to external input/output, other than store actions.
+允许在 Redux 中间件环境之外启动 sagas。如果你想将 Saga 连接到除存储操作之外的外部输入/输出，这将非常有用。
 
-`runSaga` returns a Task object. Just like the one returned from a `fork` effect.
+`runSaga` 返回一个任务对象。就像从 `fork` 效果返回的那样。
 
-- `options: Object` - currently supported options are:
-  - `channel` - see docs for [`channel`](#channel) (preferably you should use `stdChannel` here)
+- `options: Object` - 目前支持的选项有：
+  - `channel` - 参见 [`channel`](#channel) 的文档（这里最好使用 `stdChannel`）
 
-  - `dispatch(output): Function` - used to fulfill `put` effects.
-    - `output: any` -  argument provided by the Saga to the `put` Effect (see Notes below).
+  - `dispatch(output): Function` - 用于满足 `put` 效果。
+    - `output: any` - 由 Saga 提供给 `put` 效果的参数（参见下面的注释）。
 
-  - `getState(): Function` - used to fulfill `select` and `getState` effects
+  - `getState(): Function` - 用于满足 `select` 和 `getState` 效果
 
-  - `sagaMonitor` : [SagaMonitor](#sagamonitor) - see docs for [`createSagaMiddleware(options)`](#createsagamiddlewareoptions)
+  - `sagaMonitor` : [SagaMonitor](#sagamonitor) - 参见 [`createSagaMiddleware(options)`](#createsagamiddlewareoptions) 的文档
 
-  - `onError: Function` - see docs for [`createSagaMiddleware(options)`](#createsagamiddlewareoptions)
+  - `onError: Function` - 参见 [`createSagaMiddleware(options)`](#createsagamiddlewareoptions) 的文档
 
-  - `context` : {} - see docs for [`createSagaMiddleware(options)`](#createsagamiddlewareoptions)
-  - `effectMiddlewares` : Function[] - see docs for [`createSagaMiddleware(options)`](#createsagamiddlewareoptions)
+  - `context` : {} - 参见 [`createSagaMiddleware(options)`](#createsagamiddlewareoptions) 的文档
+  - `effectMiddlewares` : Function[] - 参见 [`createSagaMiddleware(options)`](#createsagamiddlewareoptions) 的文档
 
-- `saga: Function` - a Generator function
+- `saga: Function` - 一个生成器函数
 
-- `args: Array<any>` - arguments to be provided to `saga`
+- `args: Array<any>` - 提供给 `saga` 的参数
 
-#### Notes
+#### 注释
 
-The `{channel, dispatch}` is used to fulfill `take` and `put` Effects. This defines the Input/Output
-interface of the Saga.
+`{channel, dispatch}` 用于满足 `take` 和 `put` 效果。这定义了 Saga 的输入/输出接口。
 
-`channel` is used to fulfill `take(PATTERN)` effects. Every time something gets put on the channel it's
-notifying all pending internal listeners. If the Saga is blocked on a `take` effect, and
-if the take pattern matches the currently incoming input, the Saga is resumed with that input.
+`channel` 用于满足 `take(PATTERN)` 效果。每次在通道上放置东西时，都会通知所有待处理的内部监听器。如果 Saga 被 `take` 效果阻塞，并且 take 模式匹配当前进入的输入，Saga 将以该输入恢复。
 
-`dispatch` is used to fulfill `put` effects. Each time the Saga emits a `yield put(output)`, `dispatch`
-is invoked with output.
+`dispatch` 用于满足 `put` 效果。每次 Saga 发出 `yield put(output)` 时，都会用 output 调用 `dispatch`。
 
-An example how to use this API may be found [here](advanced/UsingRunSaga.md).
+如何使用此 API 的示例可以在[这里](advanced/UsingRunSaga.md)找到。
 
-## Utils
+## 实用工具
 
 ### `channel([buffer])`
 
-A factory method that can be used to create Channels. You can optionally pass it a buffer
-to control how the channel buffers the messages.
+一个可以用来创建 Channels 的工厂方法。你可以选择性地传递一个缓冲区来控制通道如何缓冲消息。
 
-By default, if no buffer is provided, the channel will queue incoming messages up to 10 until interested takers are registered. The default buffering will deliver message using a FIFO strategy: a new taker will be delivered the oldest message in the buffer.
+默认情况下，如果没有提供缓冲区，通道将排队接收的消息达到 10，直到注册感兴趣的接收者。默认的缓冲将使用 FIFO 策略：新的接收者将被传递缓冲区中最旧的消息。
 
 ### `eventChannel(subscribe, [buffer])`
 
-Creates channel that will subscribe to an event source using the `subscribe` method. Incoming events from the event source will be queued in the channel until interested takers are registered.
+创建一个将使用 `subscribe` 方法订阅事件源的通道。来自事件源的传入事件将在通道中排队，直到注册感兴趣的接收者。
 
-- `subscribe: Function` used to subscribe to the underlying event source. The function must return an unsubscribe function to terminate the subscription.
+- `subscribe: Function` 用于订阅底层事件源。该函数必须返回一个取消订阅函数以终止订阅。
 
-- `buffer: Buffer` optional Buffer object to buffer messages on this channel. If not provided, messages will not be buffered
-on this channel.
+- `buffer: Buffer` 可选的 Buffer 对象，用于在此通道上缓冲消息。如果未提供，此通道上的消息将不会被缓冲。
 
-To notify the channel that the event source has terminated, you can notify the provided subscriber with an `END`
+要通知通道事件源已终止，你可以用 `END` 通知提供的订阅者。
 
-#### Example
+#### 示例
 
-In the following example we create an event channel that will subscribe to a `setInterval`
+在以下示例中，我们创建了一个事件通道，该通道将订阅 `setInterval`
 
 ```javascript
 const countdown = (secs) => {
@@ -1205,105 +1123,105 @@ const countdown = (secs) => {
 
 ### `buffers`
 
-Provides some common buffers
+提供一些常见的缓冲区
 
-- `buffers.none()`: no buffering, new messages will be lost if there are no pending takers
+- `buffers.none()`: 没有缓冲，如果没有待处理的接收者，新消息将丢失
 
-- `buffers.fixed(limit)`: new messages will be buffered up to `limit`. Overflow will raise an Error. Omitting a `limit` value will result in a limit of 10.
+- `buffers.fixed(limit)`: 新消息将被缓冲到 `limit`。溢出将引发错误。省略 `limit` 值将导致限制为 10。
 
-- `buffers.expanding(initialSize)`: like `fixed` but Overflow will cause the buffer to expand dynamically.
+- `buffers.expanding(initialSize)`: 类似于 `fixed`，但溢出将导致缓冲区动态扩展。
 
-- `buffers.dropping(limit)`: same as `fixed` but Overflow will silently drop the messages.
+- `buffers.dropping(limit)`: 与 `fixed` 相同，但溢出将静默丢弃消息。
 
-- `buffers.sliding(limit)`: same as `fixed` but Overflow will insert the new message at the end and drop the oldest message in the buffer.
+- `buffers.sliding(limit)`: 与 `fixed` 相同，但溢出将在末尾插入新消息并丢弃缓冲区中最旧的消息。
 
 
 ### `cloneableGenerator(generatorFunc)`
 
-Takes a generator function (function*) and returns a generator function.
-All generators instanciated from this function will be cloneable.
-For testing purpose only.
+接受一个生成器函数（function*）并返回一个生成器函数。
+从此函数实例化的所有生成器都将是可克隆的。
+仅用于测试目的。
 
-#### Example
+#### 示例
 
-This is useful when you want to test a different branch of a saga without having to replay the actions that lead to it.
+当你想要测试 saga 的不同分支而无需重播导致它的操作时，这非常有用。
 
 ```javascript
 import { cloneableGenerator } from '@redux-saga/testing-utils';
 
 function* oddOrEven() {
-  // some stuff are done here
+  // 这里做了一些事情
   yield 1;
   yield 2;
   yield 3;
 
-  const userInput = yield 'enter a number';
+  const userInput = yield '输入一个数字';
   if (userInput % 2 === 0) {
-    yield 'even';
+    yield '偶数';
   } else {
-    yield 'odd'
+    yield '奇数'
   }
 }
 
-test('my oddOrEven saga', assert => {
+test('我的 oddOrEven saga', assert => {
   const data = {};
   data.gen = cloneableGenerator(oddOrEven)();
 
   assert.equal(
     data.gen.next().value,
     1,
-    'it should yield 1'
+    '应该产出 1'
   );
 
   assert.equal(
     data.gen.next().value,
     2,
-    'it should yield 2'
+    '应该产出 2'
   );
 
   assert.equal(
     data.gen.next().value,
     3,
-    'it should yield 3'
+    '应该产出 3'
   );
 
   assert.equal(
     data.gen.next().value,
-    'enter a number',
-    'it should ask for a number'
+    '输入一个数字',
+    '应该询问一个数字'
   );
 
-  assert.test('even number is given', a => {
-    // we make a clone of the generator before giving the number;
+  assert.test('给定偶数', a => {
+    // 在给出数字之前，我们克隆了生成器；
     data.clone = data.gen.clone();
 
     a.equal(
       data.gen.next(2).value,
-      'even',
-      'it should yield "even"'
+      '偶数',
+      '应该产出 "偶数"'
     );
 
     a.equal(
       data.gen.next().done,
       true,
-      'it should be done'
+      '应该完成'
     );
 
     a.end();
   });
 
-  assert.test('odd number is given', a => {
+  assert.test('给定奇数', a => {
 
     a.equal(
       data.clone.next(1).value,
-      'odd',
-      'it should yield "odd"'
+      '奇数',
+      '应该产出 "奇数"'
     );
 
     a.equal(
       data.clone.next().done,
       true,
-      'it should be done'
+      '应该完成'
     );
 
     a.end();
@@ -1315,40 +1233,39 @@ test('my oddOrEven saga', assert => {
 ```
 ### `createMockTask()`
 
-Returns an object that mocks a task.
-For testing purposes only.
-[See Task Cancellation docs for more information.](advanced/TaskCancellation.md#testing-generators-with-fork-effect)
-)
+返回一个模拟任务的对象。
+仅用于测试目的。
+[有关更多信息，请参阅任务取消文档。](advanced/TaskCancellation.md#testing-generators-with-fork-effect)
 
-## Cheatsheets
+## 速查表
 
-### Blocking / Non-blocking
+### 阻塞 / 非阻塞
 
-| Name                 | Blocking                                                    |
+| 名称                 | 阻塞                                                        |
 | -------------------- | ------------------------------------------------------------|
-| takeEvery            | No                                                          |
-| takeLatest           | No                                                          |
-| takeLeading          | No                                                          |
-| throttle             | No                                                          |
-| debounce             | No                                                          |
-| retry                | Yes                                                         |
-| take                 | Yes                                                         |
-| take(channel)        | Sometimes (see API reference)                               |
-| takeMaybe            | Yes                                                         |
-| put                  | No                                                          |
-| putResolve           | Yes                                                         |
-| put(channel, action) | No                                                          |
-| call                 | Yes                                                         |
-| apply                | Yes                                                         |
-| cps                  | Yes                                                         |
-| fork                 | No                                                          |
-| spawn                | No                                                          |
-| join                 | Yes                                                         |
-| cancel               | No                                                          |
-| select               | No                                                          |
-| actionChannel        | No                                                          |
-| flush                | Yes                                                         |
-| cancelled            | Yes                                                         |
-| race                 | Yes                                                         |
-| delay                | Yes                                                         |
-| all                  | Blocks if there is a blocking effect in the array or object |
+| takeEvery            | 否                                                          |
+| takeLatest           | 否                                                          |
+| takeLeading          | 否                                                          |
+| throttle             | 否                                                          |
+| debounce             | 否                                                          |
+| retry                | 是                                                          |
+| take                 | 是                                                          |
+| take(channel)        | 有时（参见 API 参考）                                       |
+| takeMaybe            | 是                                                          |
+| put                  | 否                                                          |
+| putResolve           | 是                                                          |
+| put(channel, action) | 否                                                          |
+| call                 | 是                                                          |
+| apply                | 是                                                          |
+| cps                  | 是                                                          |
+| fork                 | 否                                                          |
+| spawn                | 否                                                          |
+| join                 | 是                                                          |
+| cancel               | 否                                                          |
+| select               | 否                                                          |
+| actionChannel        | 否                                                          |
+| flush                | 是                                                          |
+| cancelled            | 是                                                          |
+| race                 | 是                                                          |
+| delay                | 是                                                          |
+| all                  | 如果数组或对象中有阻塞效果，则阻塞                          |

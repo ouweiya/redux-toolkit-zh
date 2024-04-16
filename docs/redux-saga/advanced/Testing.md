@@ -3,14 +3,13 @@ title: 测试
 hide_title: true
 ---
 
-# Testing Sagas
+# 测试 Sagas
 
-There are two main ways to test Sagas: testing the saga generator function step-by-step or running the full saga and
-asserting the side effects.
+测试 Sagas 主要有两种方式：逐步测试 saga 生成器函数或运行完整的 saga 并断言副作用。
 
-## Testing the Saga Generator Function
+## 测试 Saga 生成器函数
 
-Suppose we have the following actions:
+假设我们有以下操作：
 
 ```javascript
 const CHOOSE_COLOR = 'CHOOSE_COLOR'
@@ -31,7 +30,7 @@ const changeUI = color => ({
 })
 ```
 
-We want to test the saga:
+我们想要测试这个 saga：
 
 ```javascript
 function* changeColorSaga() {
@@ -40,38 +39,36 @@ function* changeColorSaga() {
 }
 ```
 
-Since Sagas always yield an Effect, and these effects have basic factory functions (e.g. put, take etc.) a test may
-inspect the yielded effect and compare it to an expected effect. To get the first yielded value from a saga,
-call its `next().value`:
+由于 Sagas 总是产生一个 Effect，这些 effects 有基本的工厂函数（例如 put，take 等），测试可以检查产生的 effect 并将其与预期的 effect 进行比较。要从 saga 获取第一个产生的值，调用其 `next().value`：
 
 ```javascript
 const gen = changeColorSaga()
 
-assert.deepEqual(gen.next().value, take(CHOOSE_COLOR), 'it should wait for a user to choose a color')
+assert.deepEqual(gen.next().value, take(CHOOSE_COLOR), '它应该等待用户选择颜色')
 ```
 
-A value must then be returned to assign to the `action` constant, which is used for the argument to the `put` effect:
+然后必须返回一个值以赋值给 `action` 常量，该常量用作 `put` effect 的参数：
 
 ```javascript
 const color = 'red'
 assert.deepEqual(
   gen.next(chooseColor(color)).value,
   put(changeUI(color)),
-  'it should dispatch an action to change the ui',
+  '它应该派发一个操作来改变 UI',
 )
 ```
 
-Since there are no more `yield`s, then next time `next()` is called, the generator will be done:
+由于没有更多的 `yield`，所以下次调用 `next()` 时，生成器将完成：
 
 ```javascript
-assert.deepEqual(gen.next().done, true, 'it should be done')
+assert.deepEqual(gen.next().done, true, '它应该完成')
 ```
 
-### Branching Saga
+### 分支 Saga
 
-Sometimes your saga will have different outcomes. To test the different branches without repeating all the steps that lead to it you can use the utility function **cloneableGenerator**
+有时你的 saga 会有不同的结果。为了测试不同的分支而不重复所有导致它的步骤，你可以使用实用函数 **cloneableGenerator**
 
-This time we add two new actions, `CHOOSE_NUMBER` and `DO_STUFF`, with a related action creators:
+这次我们添加两个新的操作，`CHOOSE_NUMBER` 和 `DO_STUFF`，以及相关的操作创建器：
 
 ```javascript
 const CHOOSE_NUMBER = 'CHOOSE_NUMBER'
@@ -89,8 +86,7 @@ const doStuff = () => ({
 })
 ```
 
-Now the saga under test will put two `DO_STUFF` actions before waiting for a `CHOOSE_NUMBER` action and then putting
-either `changeUI('red')` or `changeUI('blue')`, depending on whether the number is even or odd.
+现在要测试的 saga 将在等待 `CHOOSE_NUMBER` 操作并放置 `changeUI('red')` 或 `changeUI('blue')` 之前，放置两个 `DO_STUFF` 操作，具体取决于数字是偶数还是奇数。
 
 ```javascript
 function* doStuffThenChangeColor() {
@@ -105,7 +101,7 @@ function* doStuffThenChangeColor() {
 }
 ```
 
-The test is as follows:
+测试如下：
 
 ```javascript
 import { put, take } from 'redux-saga/effects'
@@ -117,35 +113,34 @@ test('doStuffThenChangeColor', assert => {
   gen.next() // DO_STUFF
   gen.next() // CHOOSE_NUMBER
 
-  assert.test('user choose an even number', a => {
-    // cloning the generator before sending data
+  assert.test('用户选择了一个偶数', a => {
+    // 在发送数据之前克隆生成器
     const clone = gen.clone()
-    a.deepEqual(clone.next(chooseNumber(2)).value, put(changeUI('red')), 'should change the color to red')
+    a.deepEqual(clone.next(chooseNumber(2)).value, put(changeUI('red')), '应该将颜色改为红色')
 
-    a.equal(clone.next().done, true, 'it should be done')
+    a.equal(clone.next().done, true, '它应该完成')
 
     a.end()
   })
 
-  assert.test('user choose an odd number', a => {
+  assert.test('用户选择了一个奇数', a => {
     const clone = gen.clone()
-    a.deepEqual(clone.next(chooseNumber(3)).value, put(changeUI('blue')), 'should change the color to blue')
+    a.deepEqual(clone.next(chooseNumber(3)).value, put(changeUI('blue')), '应该将颜色改为蓝色')
 
-    a.equal(clone.next().done, true, 'it should be done')
+    a.equal(clone.next().done, true, '它应该完成')
 
     a.end()
   })
 })
 ```
 
-See also: [Task cancellation](TaskCancellation.md) for testing fork effects
+另请参见：[任务取消](TaskCancellation.md) 用于测试 fork effects
 
-## Testing the full Saga
+## 测试完整的 Saga
 
-Although it may be useful to test each step of a saga, in practise this makes for brittle tests. Instead, it may be
-preferable to run the whole saga and assert that the expected effects have occurred.
+尽管测试 saga 的每一步可能很有用，但实际上这会使测试变得脆弱。相反，可能更希望运行整个 saga 并断言已发生的预期效果。
 
-Suppose we have a basic saga which calls an HTTP API:
+假设我们有一个基本的 saga，它调用一个 HTTP API：
 
 ```javascript
 function* callApi(url) {
@@ -161,7 +156,7 @@ function* callApi(url) {
 }
 ```
 
-We can run the saga with mocked values:
+我们可以用模拟值运行 saga：
 
 ```javascript
 const dispatched = []
@@ -176,7 +171,7 @@ const saga = runSaga(
 )
 ```
 
-A test could then be written to assert the dispatched actions and mock calls:
+然后可以编写一个测试来断言派发的操作和模拟调用：
 
 ```javascript
 import sinon from 'sinon'
@@ -204,23 +199,23 @@ test('callApi', async assert => {
 })
 ```
 
-See also: Repository Examples:
+另请参见：仓库示例：
 
 https://github.com/redux-saga/redux-saga/blob/main/examples/counter/test/sagas.js
 
 https://github.com/redux-saga/redux-saga/blob/main/examples/shopping-cart/test/sagas.js
 
-## Testing libraries
+## 测试库
 
-While both of the above testing methods can be written natively, there exist several libraries to make both methods easier. Additionally, some libraries can be used to test sagas in a _third_ way: recording specific side-effects (but not all).
+虽然上述两种测试方法都可以原生编写，但存在几个库可以使两种方法更容易。此外，有些库可以用第三种方式测试 sagas：记录特定的副作用（但不是全部）。
 
-Sam Hogarth's (@sh1989) [article](http://blog.scottlogic.com/2018/01/16/evaluating-redux-saga-test-libraries.html) summarizes the different options well.
+Sam Hogarth的 (@sh1989) [文章](http://blog.scottlogic.com/2018/01/16/evaluating-redux-saga-test-libraries.html) 很好地总结了不同的选项。
 
-For testing each generator yield step-by-step there is [`redux-saga-test`][1] and [`redux-saga-testing`][2]. [`redux-saga-test-engine`][3] is for recording and testing for specific side effects. For an integration test, [`redux-saga-tester`][4]. And [`redux-saga-test-plan`][5] can actually cover all three bases.
+对于逐步测试每个生成器的产出，有 [`redux-saga-test`][1] 和 [`redux-saga-testing`][2]。[`redux-saga-test-engine`][3] 用于记录和测试特定的副作用。对于集成测试，有 [`redux-saga-tester`][4]。而 [`redux-saga-test-plan`][5] 实际上可以覆盖所有三个基础。
 
-### `redux-saga-test` and `redux-saga-testing` for step-by-step testing
+### `redux-saga-test` 和 `redux-saga-testing` 用于逐步测试
 
-The `redux-saga-test` library provides syntactic sugar for your step-by-step tests. The `fromGenerator` function returns a value that can be iterated manually with `.next()` and have an assertion made using the relevant saga effect method.
+`redux-saga-test` 库为你的逐步测试提供了语法糖。`fromGenerator` 函数返回一个可以用 `.next()` 手动迭代并使用相关的 saga 效果方法进行断言的值。
 
 ```javascript
 import fromGenerator from 'redux-saga-test'
@@ -228,8 +223,8 @@ import fromGenerator from 'redux-saga-test'
 test('with redux-saga-test', () => {
   const generator = callApi('url')
   /*
-   * The assertions passed to fromGenerator
-   * requires a `deepEqual` method
+   * 传递给 fromGenerator 的断言
+   * 需要一个 `deepEqual` 方法
    */
   const expect = fromGenerator(assertions, generator)
 
@@ -239,7 +234,7 @@ test('with redux-saga-test', () => {
 })
 ```
 
-`redux-saga-testing` library provides a method `sagaHelper` that takes your generator and returns a value that works a lot like Jest's `it()` function, but also advances the generator being tested. The `result` parameter passed into the callback is the value yielded by the generater
+`redux-saga-testing` 库提供了一个 `sagaHelper` 方法，它接受你的生成器并返回一个值，这个值的工作方式很像 Jest 的 `it()` 函数，但也推进了被测试的生成器。传入回调的 `result` 参数是生成器产出的值。
 
 ```javascript
 import sagaHelper from 'redux-saga-testing'
@@ -248,23 +243,23 @@ test('with redux-saga-testing', () => {
   const it = sagaHelper(callApi())
 
   it('should select from state', selectResult => {
-    // with Jest's `expect`
+    // 使用 Jest 的 `expect`
     expect(selectResult).toBe(value)
   })
 
   it('should select from state', apiResponse => {
-    // without tape's `test`
+    // 不使用 tape 的 `test`
     assert.deepEqual(apiResponse.json(), jsonResponse)
   })
 
-  // an empty call to `it` can be used to skip an effect
+  // 空的 `it` 调用可以用来跳过一个效果
   it('', () => {})
 })
 ```
 
 ### `redux-saga-test-plan`
 
-This is the most versatile library. The `testSaga` API is used for exact order testing and `expectSaga` is for both recording side-effects and integration testing.
+这是最通用的库。`testSaga` API 用于精确顺序测试，`expectSaga` 用于记录副作用和集成测试。
 
 ```javascript
 import { expectSaga, testSaga } from 'redux-saga-test-plan';
@@ -281,23 +276,23 @@ test('exact order with redux-saga-test-plan', () => {
 
 test('recorded effects with redux-saga-test-plan', () => {
   /*
-  * With expectSaga, you can assert that any yield from
-  * your saga occurs as expected, *regardless of order*.
-  * You must call .run() at the end.
+  * 使用 expectSaga，你可以断言你的 saga 中的任何产出
+  * 都如预期那样发生，*无论顺序如何*。
+  * 你必须在最后调用 .run()。
   */
   return expectSaga(callApi, 'url')
-    .put(success(value)) // last effect from our saga, first one tested
+    .put(success(value)) // 我们的 saga 的最后一个效果，第一个被测试的
 
     .call(myApi, 'url', value)
     .run();
-    /* notice no assertion for the select call */
+    /* 注意没有对 select 调用的断言 */
 });
 
 test('test only final effect with .provide()', () => {
   /*
-  * With the .provide() method from expectSaga
-  * you can by pass in all expected values
-  * and test only your saga's final effect.
+  * 使用 expectSaga 的 .provide() 方法
+  * 你可以传入所有预期的值
+  * 并只测试你的 saga 的最终效果。
   */
   return expectSaga(callApi, 'url')
     .provide([
@@ -310,9 +305,9 @@ test('test only final effect with .provide()', () => {
 
 test('integration test with withReducer', () => {
   /*
-  * Using `withReducer` allows you to test
-  * the state shape upon completion of your reducer -
-  * a true integration test for your Redux store management.
+  * 使用 `withReducer` 可以让你测试
+  * 在你的 reducer 完成后的状态形状 -
+  * 对你的 Redux 存储管理的真正集成测试。
   */
 
   return expectSaga(callApi, 'url')
@@ -329,48 +324,48 @@ test('integration test with withReducer', () => {
 
 ### redux-saga-test-engine
 
-This library functions very similarly in setup to `redux-saga-test-plan`, but is best used to record effects. Provide a collection of saga generic effects to be watched by `createSagaTestEngine` function which in turn returns a function. Then provide your saga and specific effects and their arguments.
+这个库的设置方式与`redux-saga-test-plan`非常相似，但最好用来记录效果。提供一组由`createSagaTestEngine`函数观察的saga通用效果集合，该函数反过来返回一个函数。然后提供你的saga和特定的效果及其参数。
 
 ```javascript
 const collectedEffects  = createSagaTestEngine(['SELECT', 'CALL', 'PUT']);
 const actualEffects = collectEffects(mySaga, [ [myEffect(arg), value], ... ], argsToMySaga);
 ```
 
-The value of `actualEffects` is an array containing elements equal to the yielded values from all _collected_ effects, in order of occurence.
+`actualEffects`的值是一个数组，包含所有_收集到的_效果产生的值，按照出现的顺序。
 
 ```javascript
 import createSagaTestEngine from 'redux-saga-test-engine'
 
-test('testing with redux-saga-test-engine', () => {
+test('使用redux-saga-test-engine进行测试', () => {
   const collectEffects = createSagaTestEngine(['CALL', 'PUT'])
 
   const actualEffects = collectEffects(
     callApi,
     [[select(selectFromState), selectedValue], [call(myApi, 'url', selectedValue), response]],
-    // Any further args are passed to the saga
-    // Here it is our URL, but typically would be the dispatched action
+    // 任何进一步的参数都传递给saga
+    // 这里是我们的URL，但通常会是派发的动作
     'url',
   )
 
-  // assert that the effects you care about occurred as expected, in order
+  // 断言你关心的效果按预期发生，按顺序
   assert.equal(actualEffects[0], call(myApi, 'url', selectedValue))
   assert.equal(actualEffects[1], put(success, response))
 
-  // assert that your saga does nothing unexpected
+  // 断言你的saga没有做任何意外的事情
   assert.true(actualEffects.length === 2)
 })
 ```
 
 ### redux-saga-tester
 
-A final library to consider for integration testing. this library provides a `sagaTester` class, to which you instantiate with your store's initial state and your reducer.
+最后一个考虑进行集成测试的库。这个库提供了一个`sagaTester`类，你可以用你的存储的初始状态和你的reducer来实例化它。
 
-To test your saga, the `sagaTester` instance `start()` method with your saga and its argument(s). This runs your saga to its end. Then you may assert that effects occured, actions were dispatched and the state was updated as expected.
+要测试你的saga，使用`sagaTester`实例的`start()`方法和你的saga及其参数。这将运行你的saga到结束。然后你可以断言效果发生，动作被派发，状态如预期更新。
 
 ```javascript
 import SagaTester from 'redux-saga-tester';
 
-test('with redux-saga-tester', () => {
+test('使用redux-saga-tester', () => {
   const sagaTester = new SagaTester({
     initialState: defaultState,
     reducers: reducer
@@ -390,13 +385,13 @@ test('with redux-saga-tester', () => {
 
 ## `effectMiddlewares`
 
-Provides a native way to perform integration like testing without one of the above libraries.
+提供了一种原生的方式来进行类似集成的测试，而不需要上述的库。
 
-The idea is that you can create a real redux store with saga middleware in your test file. The saga middleware takes an object as an argument. That object would have an `effectMiddlewares` value: a function where you can intercept/hijack any effect and resolve it on your own - passing it very redux-style to the next middleware.
+这个想法是，你可以在你的测试文件中创建一个带有saga中间件的真实redux存储。saga中间件接受一个对象作为参数。该对象将有一个`effectMiddlewares`值：一个函数，你可以在其中拦截/劫持任何效果并自行解决它 - 将它非常redux风格地传递给下一个中间件。
 
-In your test, you would start a saga, intercept/resolve async effects with effectMiddlewares and assert on things like state updates to test integration between your saga and a store.
+在你的测试中，你将启动一个saga，使用effectMiddlewares拦截/解决异步效果，并断言诸如状态更新之类的事情来测试你的saga和存储之间的集成。
 
-Here's an example from the [docs](https://github.com/redux-saga/redux-saga/blob/34c9093684323ab92eacdf2df958f31d9873d3b1/test/interpreter/effectMiddlewares.js#L88):
+这是[文档](https://github.com/redux-saga/redux-saga/blob/34c9093684323ab92eacdf2df958f31d9873d3b1/test/interpreter/effectMiddlewares.js#L88)中的一个例子：
 
 ```javascript
 test('effectMiddleware', assert => {
@@ -446,7 +441,7 @@ test('effectMiddleware', assert => {
       assert.deepEqual(
         actual,
         expected,
-        'effectMiddleware must be able to intercept and resolve effect in a custom way',
+        'effectMiddleware必须能够以自定义的方式拦截和解决效果',
       )
     })
     .catch(err => assert.fail(err))

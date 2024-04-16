@@ -70,7 +70,7 @@
   --ifm-color-primary-light: #b97cfd;
   --ifm-color-primary-lighter: #cc8ffc;
   --ifm-color-primary-lightest: #fcf2ff;
-  --ifm-blockquote-color: #ecf4f9;
+  --ifm-blockquote-color: #868686;
   --ifm-blockquote-color-dark: #6d1cac;
   --ifm-menu-color-active: black;
   --blockquote-text-color: black;
@@ -116,7 +116,8 @@ div[class*="codeBlockTitle"] {
 }
 
 :root[data-theme="dark"] blockquote code {
-  color: var(--ifm-blockquote-color);
+  color: #d4d4d4;
+  background-color: #585858;
 }
 
 code {

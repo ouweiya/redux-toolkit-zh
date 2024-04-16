@@ -3,12 +3,12 @@ title: 效果
 hide_title: true
 ---
 
-# A common abstraction: Effect
+# 一个常见的抽象：Effect
 
-To generalize, triggering Side Effects from inside a Saga is always done by yielding some declarative Effect. (You can also yield Promise directly, but this will make testing difficult as we saw in the first section.)
+一般来说，从 Saga 内部触发副作用总是通过产生一些声明性的 Effect 来完成的。（你也可以直接产生 Promise，但是这将使测试变得困难，正如我们在第一部分看到的那样。）
 
-What a Saga does is actually compose all those Effects together to implement the desired control flow. The most basic example is to sequence yielded Effects by putting the yields one after another. You can also use the familiar control flow operators (`if`, `while`, `for`) to implement more sophisticated control flows.
+Saga 实际上做的是将所有这些 Effect 组合在一起以实现所需的控制流。最基本的例子是通过将产生的 Effect 一个接一个地放置来序列化它们。你也可以使用熟悉的控制流操作符（`if`，`while`，`for`）来实现更复杂的控制流。
 
-We saw that using Effects like `call` and `put`, combined with high-level APIs like `takeEvery` allows us to achieve the same things as `redux-thunk`, but with the added benefit of easy testability.
+我们看到，使用像 `call` 和 `put` 这样的 Effect，结合像 `takeEvery` 这样的高级 API，使我们能够实现与 `redux-thunk` 相同的事情，但增加了易于测试的优点。
 
-But `redux-saga` provides another advantage over `redux-thunk`. In the Advanced section you'll encounter some more powerful Effects that let you express complex control flows while still allowing the same testability benefit.
+但是 `redux-saga` 提供了 `redux-thunk` 无法比拟的另一个优点。在高级部分，你将遇到一些更强大的 Effect，它们让你能够表达复杂的控制流，同时仍然允许同样的可测试性优势。

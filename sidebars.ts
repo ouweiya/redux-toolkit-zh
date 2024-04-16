@@ -206,6 +206,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "介绍",
+      collapsed: false,
       items: [
         "redux-saga/introduction/GettingStarted",
         "redux-saga/introduction/BeginnerTutorial",
@@ -215,6 +216,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "基本概念",
+      collapsed: false,
       items: [
         "redux-saga/basics/DeclarativeEffects",
         "redux-saga/basics/DispatchingActions",
@@ -226,6 +228,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "高级概念",
+      collapsed: false,
       items: [
         "redux-saga/advanced/Channels",
         "redux-saga/advanced/ComposingSagas",
