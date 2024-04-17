@@ -84,11 +84,6 @@ const config: Config = {
         { to: "api/configureStore", label: "API", position: "right" },
         { to: "rtk-query/overview", label: "RTK 查询", position: "right" },
         {
-          href: "https://github.com/ouweiya/redux-toolkit-zh",
-          label: "GitHub",
-          position: "right",
-        },
-        {
           type: "docSidebar",
           position: "right",
           sidebarId: "reselect",
@@ -99,6 +94,11 @@ const config: Config = {
           position: "right",
           sidebarId: "reduxSaga",
           label: "Redux-Saga 中文",
+        },
+        {
+          href: "https://github.com/ouweiya/redux-toolkit-zh",
+          label: "GitHub",
+          position: "right",
         },
       ],
     },
@@ -148,8 +148,12 @@ const config: Config = {
           title: "更多",
           items: [
             {
-              label: "GitHub",
-              href: "https://www.github.com/reduxjs/redux-toolkit",
+              label: "Redux Toolkit GitHub",
+              href: "https://github.com/reduxjs/redux-toolkit",
+            },
+            {
+              label: "Redux Toolkit GitHub 中文",
+              href: "https://github.com/ouweiya/redux-toolkit-zh",
             },
             {
               html: `
