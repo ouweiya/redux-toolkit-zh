@@ -1,31 +1,29 @@
 ---
 id: api-slice-utils
-title: 'API Slices: Utilities'
-sidebar_label: API Slice Utilities
+title: 'API 切片：工具函数'
+sidebar_label: API 切片工具函数
 hide_title: true
 ---
 
 &nbsp;
 
-# API Slices: Utilities
+# API 切片：工具函数
 
-The API slice object includes various utilities that can be used for cache management,
-such as implementing [optimistic updates](../../usage/manual-cache-updates.mdx#optimistic-updates),
-as well implementing [server side rendering](../../usage/server-side-rendering.mdx).
+API 切片对象包含各种用于缓存管理的工具函数,例如实现[乐观更新](../../usage/manual-cache-updates.mdx#optimistic-updates),以及实现[服务端渲染](../../usage/server-side-rendering.mdx)。
 
-These are included as `api.util` inside the API object.
+这些工具函数包含在 API 对象的 `api.util` 中。
 
 :::info
 
-Some of the TS types on this page are pseudocode to illustrate intent, as the actual internal types are fairly complex.
+由于实际内部类型相当复杂,此页面上的一些 TS 类型是用伪代码表示以说明用途。
 
 :::
 
 ### `updateQueryData`
 
-A Redux thunk action creator that, when dispatched, creates and applies a set of JSON diff/patch objects to the current state. This immediately updates the Redux state with those changes.
+一个 Redux thunk action creator,当被分发时,会创建并应用一组 JSON diff/patch 对象到当前状态。这会立即使用这些更改更新 Redux 状态。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 const updateQueryData = (
@@ -42,24 +40,24 @@ interface PatchCollection {
 }
 ```
 
-#### Parameters
+#### 参数
 
-- `endpointName`: a string matching an existing endpoint name
-- `arg`: an argument matching that used for a previous query call, used to determine which cached dataset needs to be updated
-- `updateRecipe`: an Immer `produce` callback that can apply changes to the cached state
-- `updateProvided`: a boolean indicating whether the endpoint's provided tags should be re-calculated based on the updated cache. Defaults to `false`.
+- `endpointName`: 匹配现有端点名称的字符串
+- `arg`: 与之前查询调用使用的参数匹配的参数,用于确定需要更新哪个缓存数据集
+- `updateRecipe`: 一个 Immer `produce` 回调函数,可以对缓存状态进行修改
+- `updateProvided`: 一个布尔值,指示是否应该基于更新后的缓存重新计算端点的提供的标签。默认为 `false`。
 
-#### Description
+#### 描述
 
-The thunk action creator accepts three arguments: the name of the endpoint we are updating (such as `'getPost'`), any relevant query arguments, and a callback function. The callback receives an Immer-wrapped `draft` of the current state, and may modify the draft to match the expected results after the mutation completes successfully.
+该 thunk action creator 接受三个参数:要更新的端点名称(如 `'getPost'`),任何相关的查询参数,以及一个回调函数。该回调接收当前状态的 Immer 包装的 `draft`,并可以修改草稿以匹配突变成功完成后的预期结果。
 
-The thunk returns an object containing `{patches: Patch[], inversePatches: Patch[], undo: () => void}`. The `patches` and `inversePatches` are generated using Immer's [`produceWithPatches` method](https://immerjs.github.io/immer/patches).
+thunk 返回一个包含 `{patches: Patch[], inversePatches: Patch[], undo: () => void}` 的对象。`patches` 和 `inversePatches` 是使用 Immer 的 [`produceWithPatches` 方法](https://immerjs.github.io/immer/patches)生成的。
 
-This is typically used as the first step in implementing optimistic updates. The generated `inversePatches` can be used to revert the updates by calling `dispatch(patchQueryData(endpointName, arg, inversePatches))`. Alternatively, the `undo` method can be called directly to achieve the same effect.
+这通常用作实现乐观更新的第一步。通过调用 `dispatch(patchQueryData(endpointName, arg, inversePatches))` 可以使用生成的 `inversePatches` 来撤销更新。或者,可以直接调用 `undo` 方法来达到相同的效果。
 
-Note that the first two arguments (`endpointName` and `arg`) are used to determine which existing cache entry to update. If no existing cache entry is found, the `updateRecipe` callback will not run.
+注意前两个参数(`endpointName` 和 `arg`)用于确定要更新哪个现有的缓存条目。如果找不到现有的缓存条目,`updateRecipe` 回调将不会运行。
 
-#### Example 1
+#### 示例 1
 
 ```ts no-transpile
 const patchCollection = dispatch(
@@ -69,10 +67,9 @@ const patchCollection = dispatch(
 )
 ```
 
-In the example above, `'getPosts'` is provided for the `endpointName`, and `undefined` is provided
-for `arg`. This will match a query cache key of `'getPosts(undefined)'`.
+在上面的示例中,`'getPosts'` 作为 `endpointName` 提供,`undefined` 作为 `arg` 提供。这将匹配缓存键为 `'getPosts(undefined)'` 的查询。
 
-i.e. it will match a cache entry that may have been created via any of the following calls:
+即,它将匹配可能通过以下任何调用创建的缓存条目:
 
 ```ts no-transpile
 api.endpoints.getPosts.useQuery()
@@ -86,7 +83,7 @@ dispatch(api.endpoints.getPosts.initiate())
 dispatch(api.endpoints.getPosts.initiate(undefined, { ...options }))
 ```
 
-#### Example 2
+#### 示例 2
 
 ```ts no-transpile
 const patchCollection = dispatch(
@@ -96,10 +93,9 @@ const patchCollection = dispatch(
 )
 ```
 
-In the example above, `'getPostById'` is provided for the `endpointName`, and `1` is provided
-for `arg`. This will match a query cache key of `'getPostById(1)'`.
+在上面的示例中,`'getPostById'` 作为 `endpointName` 提供,`1` 作为 `arg` 提供。这将匹配缓存键为 `'getPostById(1)'` 的查询。
 
-i.e. it will match a cache entry that may have been created via any of the following calls:
+即,它将匹配可能通过以下任何调用创建的缓存条目:
 
 ```ts no-transpile
 api.endpoints.getPostById.useQuery(1)
@@ -115,32 +111,32 @@ dispatch(api.endpoints.getPostById.initiate(1, { ...options }))
 
 ### `upsertQueryData`
 
-A Redux thunk action creator that, when dispatched, acts as an artificial API request to upsert a value into the cache.
+一个 Redux thunk action creator,当被分发时,会作为一个人工 API 请求将值插入到缓存中。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 const upsertQueryData = <T>(endpointName: string, arg: any, newEntryData: T) =>
   ThunkAction<Promise<CacheEntry<T>>, PartialState, any, UnknownAction>
 ```
 
-#### Parameters
+#### 参数
 
-- `endpointName`: a string matching an existing endpoint name
-- `arg`: an argument matching that used for a previous query call, used to determine which cached dataset needs to be updated
-- `newEntryValue`: the value to be written into the corresponding cache entry's `data` field
+- `endpointName`: 匹配现有端点名称的字符串
+- `arg`: 与之前查询调用使用的参数匹配的参数,用于确定需要更新哪个缓存数据集
+- `newEntryValue`: 要写入相应缓存条目的 `data` 字段的值
 
-#### Description
+#### 描述
 
-The thunk action creator accepts three arguments: the name of the endpoint we are updating (such as `'getPost'`), the appropriate query arg values to construct the desired cache key, and the data to upsert.
+该 thunk action creator 接受三个参数:要更新的端点名称(如 `'getPost'`),适当的查询参数值以构造所需的缓存键,以及要插入的数据。
 
-If no cache entry for that cache key exists, a cache entry will be created and the data added. If a cache entry already exists, this will _overwrite_ the existing cache entry data.
+如果该缓存键不存在缓存条目,将创建一个缓存条目并添加数据。如果已存在缓存条目,这将_覆盖_现有的缓存条目数据。
 
-The thunk executes _asynchronously_, and returns a promise that resolves when the store has been updated. This includes executing the `transformResponse` callback if defined for that endpoint.
+thunk 异步执行,并返回一个 promise,该 promise 在存储更新完成时解析。这包括执行为该端点定义的 `transformResponse` 回调(如果有)。
 
-If dispatched while an actual request is in progress, both the upsert and request will be handled as soon as they resolve, resulting in a "last result wins" update behavior.
+如果在实际请求正在进行时分发,upsert 和请求都将在它们解析后立即处理,导致"最后结果获胜"的更新行为。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 await dispatch(
@@ -150,9 +146,9 @@ await dispatch(
 
 ### `patchQueryData`
 
-A Redux thunk action creator that, when dispatched, applies a JSON diff/patch array to the cached data for a given query result. This immediately updates the Redux state with those changes.
+一个 Redux thunk action creator,当被分发时,将 JSON diff/patch 数组应用于给定查询结果的缓存数据。这会立即使用这些更改更新 Redux 状态。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 const patchQueryData = (
@@ -163,22 +159,22 @@ const patchQueryData = (
 ) => ThunkAction<void, PartialState, any, UnknownAction>;
 ```
 
-#### Parameters
+#### 参数
 
-- `endpointName`: a string matching an existing endpoint name
-- `arg`: a cache key, used to determine which cached dataset needs to be updated
-- `patches`: an array of patches (or inverse patches) to apply to cached state. These would typically be obtained from the result of dispatching [`updateQueryData`](#updatequerydata)
-- `updateProvided`: a boolean indicating whether the endpoint's provided tags should be re-calculated based on the updated cache. Defaults to `false`.
+- `endpointName`: 匹配现有端点名称的字符串
+- `arg`: 缓存键,用于确定需要更新哪个缓存数据集
+- `patches`: 要应用于缓存状态的patches(或inverse patches)数组。这些通常是从分发[`updateQueryData`](#updatequerydata)的结果中获得的
+- `updateProvided`: 布尔值,指示是否应该基于更新后的缓存重新计算端点的提供的标签。默认为`false`。
 
-#### Description
+#### 描述
 
-The thunk action creator accepts three arguments: the name of the endpoint we are updating (such as `'getPost'`), the appropriate query arg values to construct the desired cache key, and a JSON diff/patch array as produced by Immer's `produceWithPatches`.
+该 thunk action creator 接受三个参数:要更新的端点名称(如'getPost'),适当的查询参数值以构造所需的缓存键,以及由 Immer 的`produceWithPatches`生成的 JSON diff/patch 数组。
 
-This is typically used as the second step in implementing optimistic updates. If a request fails, the optimistically-applied changes can be reverted by dispatching `patchQueryData` with the `inversePatches` that were generated by `updateQueryData` earlier.
+这通常用作实现乐观更新的第二步。如果请求失败,可以通过使用先前由`updateQueryData`生成的`inversePatches`分发`patchQueryData`来还原乐观应用的更改。
 
-In cases where it is desired to simply revert the previous changes, it may be preferable to call the `undo` method returned from dispatching `updateQueryData` instead.
+在希望简单地还原先前更改的情况下,可能更适合调用从分发`updateQueryData`返回的`undo`方法。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 const patchCollection = dispatch(
@@ -187,7 +183,7 @@ const patchCollection = dispatch(
   }),
 )
 
-// later
+// 之后
 dispatch(
   api.util.patchQueryData(
     'getPosts',
@@ -196,19 +192,19 @@ dispatch(
   ),
 )
 
-// or
+// 或者
 patchCollection.undo()
 ```
 
 ### `upsertQueryEntries`
 
-A standard Redux action creator that accepts an array of individual cache entry descriptions, and immediately upserts them into the store. This is designed to efficiently bulk-insert many entries at once.
+一个标准的 Redux action creator,它接受一个单独缓存条目描述的数组,并立即将它们插入到存储中。这旨在有效地一次性批量插入多个条目。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 /**
- * A typesafe single entry to be upserted into the cache
+ * 一个类型安全的要插入到缓存中的单个条目
  */
 export type NormalizedQueryUpsertEntry<
   Definitions extends EndpointDefinitions,
@@ -223,34 +219,34 @@ const upsertQueryEntries = (entries: NormalizedQueryUpsertEntry[]) =>
   PayloadAction<NormalizedQueryUpsertEntry[]>
 ```
 
-#### Parameters
+#### 参数
 
-- `entries`: an array of objects that contain the data needed to upsert individual cache entries:
-  - `endpointName`: the name of the endpoint, such as `"getPokemon"`
-  - `arg`: the full query key argument needed to identify this cache entry, such as `"pikachu"` (same as you would pass to a `useQuery` hook or `api.endpoints.someEndpoint.select()`)
-  - `value`: the data to be upserted into this cache entry, exactly as formatted.
+- `entries`: 包含需要插入的单个缓存条目描述的数组:
+  - `endpointName`: 端点的名称,例如 `"getPokemon"`
+  - `arg`: 用于标识此缓存条目的完整查询键参数,例如 `"pikachu"`(与传递给 `useQuery` 钩子或 `api.endpoints.someEndpoint.select()` 的参数相同)
+  - `value`: 要插入到此缓存条目的数据,格式完全相同。
 
-#### Description
+#### 描述
 
-This method is designed as a more efficient approach to bulk-inserting many entries at once than many individual calls to `upsertQueryData`. As a comparison:
+此方法设计为比多次单独调用 `upsertQueryData` 更有效的批量插入多个条目的方法。作为比较:
 
 - `upsertQueryData`:
-  - upserts one cache entry at a time
-  - Is async
-  - Dispatches 2 separate actions, `pending` and `fulfilled`
-  - Runs the `transformResponse` callback if defined for that endpoint, as well as the `merge` callback if defined
+  - 一次插入一个缓存条目
+  - 是异步的
+  - 分发 2 个单独的操作,`pending` 和 `fulfilled`
+  - 如果为该端点定义了 `transformResponse` 回调,则运行该回调,以及如果定义了 `merge` 回调,则运行该回调
 - `upsertQueryEntries`:
-  - upserts many cache entries at once, and they may be for any combination of endpoints defined in the API
-  - Is a single synchronous action
-  - Does _not_ run `transformResponse`, so the provided `value` fields must already be in the final format expected for that endpoint. However, it will still run the `merge` callback if defined
+  - 一次插入多个缓存条目,它们可以是 API 中定义的任何端点的组合
+  - 是一个单一的同步操作
+  - 不运行 `transformResponse`,因此提供的 `value` 字段必须已经是该端点预期的最终格式。然而,如果定义了 `merge` 回调,它仍然会运行
 
-Currently, this method has two main use cases. The first is prefilling the cache with data retrieved from storage on app startup. The second is to act as a "pseudo-normalization" tool. [RTK Query is _not_ a "normalized" cache](../../usage/cache-behavior.mdx#no-normalized-or-de-duplicated-cache). However, there are times when you may want to prefill other cache entries with the contents of another endpoint, such as taking the results of a `getPosts` list endpoint response and prefilling the individual `getPost(id)` endpoint cache entries.
+目前,此方法有两个主要用例。第一个是在应用程序启动时使用从存储中检索的数据预填充缓存。第二个是作为"伪规范化"工具。[RTK Query 不是"规范化"缓存](../../usage/cache-behavior.mdx#no-normalized-or-de-duplicated-cache)。然而,有时您可能希望使用另一个端点的内容预填充其他缓存条目,例如获取 `getPosts` 列表端点响应的结果并预填充单个 `getPost(id)` 端点缓存条目。
 
-If no cache entry for that cache key exists, a cache entry will be created and the data added. If a cache entry already exists, this will _overwrite_ the existing cache entry data.
+如果该缓存键不存在缓存条目,将创建一个缓存条目并添加数据。如果已存在缓存条目,这将_覆盖_现有的缓存条目数据。
 
-If dispatched while an actual request is in progress, both the upsert and request will be handled as soon as they resolve, resulting in a "last result wins" update behavior.
+如果在实际请求正在进行时分发,upsert 和请求都将在它们解析后立即处理,导致"最后结果获胜"的更新行为。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 const api = createApi({
@@ -261,8 +257,7 @@ const api = createApi({
         const res = await queryFulfilled
         const posts = res.data
 
-        // Pre-fill the individual post entries with the results
-        // from the list endpoint query
+        // 使用列表端点查询的结果预填充单个帖子条目
         dispatch(
           api.util.upsertQueryEntries(
             posts.map((post) => ({
@@ -283,9 +278,9 @@ const api = createApi({
 
 ### `prefetch`
 
-A Redux thunk action creator that can be used to manually trigger pre-fetching of data.
+一个 Redux thunk action creator,可用于手动触发数据预取。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 type PrefetchOptions = { ifOlderThan?: false | number } | { force?: boolean }
@@ -294,21 +289,21 @@ const prefetch = (endpointName: string, arg: any, options: PrefetchOptions) =>
   ThunkAction<void, any, any, UnknownAction>
 ```
 
-#### Parameters
+#### 参数
 
-- `endpointName`: a string matching an existing endpoint name
-- `args`: a cache key, used to determine which cached dataset needs to be updated
-- `options`: options to determine whether the request should be sent for a given situation:
-  - `ifOlderThan`: if specified, only runs the query if the difference between `new Date()` and the last`fulfilledTimeStamp` is greater than the given value (in seconds)
-  - `force`: if `true`, it will ignore the `ifOlderThan` value if it is set and the query will be run even if it exists in the cache.
+- `endpointName`: 匹配现有端点名称的字符串
+- `args`: 缓存键,用于确定需要更新哪个缓存数据集
+- `options`: 用于确定在给定情况下是否应发送请求的选项:
+  - `ifOlderThan`: 如果指定,仅在 `new Date()` 和最后 `fulfilledTimeStamp` 之间的差异大于给定值(以秒为单位)时运行查询
+  - `force`: 如果为 `true`,则会忽略 `ifOlderThan` 值(如果已设置),并且即使它存在于缓存中,查询也会运行。
 
-#### Description
+#### 描述
 
-The thunk action creator accepts three arguments: the name of the endpoint we are updating (such as `'getPost'`), any relevant query arguments, and a set of options used to determine if the data actually should be re-fetched based on cache staleness.
+该 thunk action creator 接受三个参数:要更新的端点名称(如 `'getPost'`),任何相关的查询参数,以及一组用于根据缓存陈旧性确定是否实际应重新获取数据的选项。
 
-React Hooks users will most likely never need to use this directly, as the `usePrefetch` hook will dispatch the thunk action creator result internally as needed when you call the prefetching function supplied by the hook.
+React Hooks 用户很可能永远不需要直接使用它,因为 `usePrefetch` 钩子将在您调用钩子提供的预取函数时内部分发 thunk action creator 结果。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 dispatch(api.util.prefetch('getPosts', undefined, { force: true }))
@@ -316,9 +311,9 @@ dispatch(api.util.prefetch('getPosts', undefined, { force: true }))
 
 ### `selectInvalidatedBy`
 
-A selector function that can select query parameters to be invalidated.
+一个选择器函数,可以选择要失效的查询参数。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 function selectInvalidatedBy(
@@ -331,28 +326,28 @@ function selectInvalidatedBy(
 }>
 ```
 
-#### Parameters
+#### 参数
 
-- `state`: the root state
-- `tags`: a readonly array of invalidated tags, where the provided `TagDescription` is one of the strings provided to the [`tagTypes`](../createApi.mdx#tagtypes) property of the api. e.g.
+- `state`: 根状态
+- `tags`: 只读的失效标签数组,其中提供的 `TagDescription` 是提供给 api 的 [`tagTypes`](../createApi.mdx#tagtypes) 属性的字符串之一。例如
   - `[TagType]`
   - `[{ type: TagType }]`
   - `[{ type: TagType, id: number | string }]`
 
-#### Description
+#### 描述
 
-The function accepts two arguments
+该函数接受两个参数
 
-- the root state and
-- the cache tags to be invalidated.
+- 根状态和
+- 要失效的缓存标签。
 
-It returns an array that contains
+它返回一个包含
 
-- the endpoint name,
-- the original args and
-- the queryCacheKey.
+- 端点名称,
+- 原始参数和
+- queryCacheKey 的数组。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 const entries = api.util.selectInvalidatedBy(state, ['Post'])
@@ -365,9 +360,9 @@ const entries = api.util.selectInvalidatedBy(state, [
 
 ### `invalidateTags`
 
-A Redux action creator that can be used to manually invalidate cache tags for [automated re-fetching](../../usage/automated-refetching.mdx).
+一个 Redux action creator,可用于手动使缓存标签失效以进行[自动重新获取](../../usage/automated-refetching.mdx)。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 const invalidateTags = (
@@ -378,20 +373,20 @@ const invalidateTags = (
 })
 ```
 
-#### Parameters
+#### 参数
 
-- `tags`: an array of tags to be invalidated, where the provided `TagType` is one of the strings provided to the [`tagTypes`](../createApi.mdx#tagtypes) property of the api. e.g.
+- `tags`: 要失效的标签数组,其中提供的 `TagType` 是提供给 api 的 [`tagTypes`](../createApi.mdx#tagtypes) 属性的字符串之一。例如
   - `[TagType]`
   - `[{ type: TagType }]`
   - `[{ type: TagType, id: number | string }]`
 
-#### Description
+#### 描述
 
-The action creator accepts one argument: the cache tags to be invalidated. It returns an action with those tags as a payload, and the corresponding `invalidateTags` action type for the api.
+该 action creator 接受一个参数:要失效的缓存标签。它返回一个包含这些标签作为有效负载的操作,以及相应的 api 的 `invalidateTags` 操作类型。
 
-Dispatching the result of this action creator will [invalidate](../../usage/automated-refetching.mdx#invalidating-cache-data) the given tags, causing queries to automatically re-fetch if they are subscribed to cache data that [provides](../../usage/automated-refetching.mdx#providing-cache-data) the corresponding tags.
+分发此 action creator 结果将[使给定标签失效](../../usage/automated-refetching.mdx#invalidating-cache-data),导致查询自动重新获取,如果它们订阅了提供相应标签的缓存数据。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 dispatch(api.util.invalidateTags(['Post']))
@@ -406,9 +401,9 @@ dispatch(
 
 ### `selectCachedArgsForQuery`
 
-A selector function that can select arguments for currently cached queries.
+一个选择器函数,可以选择当前缓存查询的参数。
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 function selectCachedArgsForQuery(
@@ -417,22 +412,22 @@ function selectCachedArgsForQuery(
 ): Array<QueryArg>
 ```
 
-#### Parameters
+#### 参数
 
-- `state`: the root state
-- `queryName`: a string matching an existing query endpoint name
+- `state`: 根状态
+- `queryName`: 匹配现有查询端点名称的字符串
 
-#### Description
+#### 描述
 
-The function accepts two arguments
+该函数接受两个参数
 
-- the root state and
+- 根状态和
 
-- the name of the query
+- 查询的名称
 
-It returns an array that contains arguments used for each entry.
+它返回一个包含每个条目使用的参数的数组。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 const args = api.util.selectCachedArgsForQuery(state, 'getPosts')
@@ -440,7 +435,7 @@ const args = api.util.selectCachedArgsForQuery(state, 'getPosts')
 
 ### `resetApiState`
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 const resetApiState = () => ({
@@ -449,42 +444,41 @@ const resetApiState = () => ({
 })
 ```
 
-#### Description
+#### 描述
 
-A Redux action creator that can be dispatched to manually reset the api state completely. This will immediately remove all existing cache entries, and all queries will be considered 'uninitialized'.
+一个 Redux action creator,可以分发以手动完全重置 api 状态。这将立即删除所有现有的缓存条目,并且所有查询将被视为"未初始化"。
 
-Note that [hooks](./hooks.mdx) also track state in local component state and might not fully be reset by `resetApiState`.
+请注意,[钩子](./hooks.mdx) 还会在本地组件状态中跟踪状态,并且可能不会完全通过 `resetApiState` 重置。
 
-#### Example
+#### 示例
 
 ```ts no-transpile
 dispatch(api.util.resetApiState())
 ```
 
-## `getRunningQueriesThunk` and `getRunningMutationsThunk`
+## `getRunningQueriesThunk` 和 `getRunningMutationsThunk`
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 getRunningQueriesThunk(): ThunkWithReturnValue<Array<QueryActionCreatorResult<any>>>
 getRunningMutationsThunk(): ThunkWithReturnValue<Array<MutationActionCreatorResult<any>>>
 ```
 
-#### Description
+#### 描述
 
-Thunks that (if dispatched) return either all running queries or mutations.
-These returned values can be awaited like promises.
+thunks(如果被分发)返回所有正在运行的查询或突变。
+这些返回值可以像 promise 一样等待。
 
-This is useful for SSR scenarios to await all queries (or mutations) triggered in any way, including via hook calls
-or manually dispatching `initiate` actions.
+这对于 SSR 场景很有用,可以等待所有以任何方式触发的查询(或突变),包括通过钩子调用或手动分发 `initiate` 操作。
 
-```ts no-transpile title="Awaiting all currently running queries example"
+```ts no-transpile title="等待所有当前正在运行的查询示例"
 await Promise.all(dispatch(api.util.getRunningQueriesThunk()))
 ```
 
-## `getRunningQueryThunk` and `getRunningMutationThunk`
+## `getRunningQueryThunk` 和 `getRunningMutationThunk`
 
-#### Signature
+#### 签名
 
 ```ts no-transpile
 getRunningQueryThunk<EndpointName extends QueryKeys<Definitions>>(
@@ -508,12 +502,9 @@ getRunningMutationThunk<EndpointName extends MutationKeys<Definitions>>(
 >
 ```
 
-#### Description
+#### 描述
 
-Thunks that (if dispatched) return a single running query (or mutation) for a given
-endpoint name + argument (or requestId/fixedCacheKey) combination, if it is currently running.
-If it is not currently running, the function returns `undefined`.
+thunks(如果被分发)返回给定端点名称+参数(或 requestId/fixedCacheKey)组合的单个正在运行的查询(或突变),如果它当前正在运行。如果它当前未运行,该函数返回 `undefined`。
 
-These thunks are primarily added to add experimental support for suspense in the future.
-They enable writing custom hooks that look up if RTK Query has already got a running query/mutation
-for a certain endpoint/argument combination, and retrieving that to `throw` it as a promise.
+这些 thunks 主要是为了在未来添加对 suspense 的实验性支持。
+它们使编写自定义钩子成为可能,这些钩子查找 RTK Query 是否已经有一个正在运行的查询/突变,用于某个端点/参数组合,并检索它以将其作为 promise `throw`。
