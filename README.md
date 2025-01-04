@@ -1,8 +1,6 @@
-#### Redux Toolkit 中文文档，其中包含 Redux Reselect，Redux-Saga，由 GPT-4 翻译。
+#### Redux Toolkit 中文文档，其中包含 Redux Reselect，Redux-Saga，由 GPT-4、Claude 翻译。
 
-##### 文档地址：https://ouweiya.github.io/redux-toolkit-zh
-
-##### 更新时间：2024-04-18
+##### 中文文档地址：https://ouweiya.github.io/redux-toolkit-zh
 
 ##### 官方地址
 
@@ -18,7 +16,7 @@ React Redux
 GitHub：https://github.com/reduxjs/react-redux  
 Website：https://react-redux.js.org
 
-Reselect  
+Redux Reselect  
 GitHub：https://github.com/reduxjs/reselect  
 Website：https://reselect.js.org
 
