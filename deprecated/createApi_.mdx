@@ -1,0 +1,697 @@
+---
+id: createApi
+title: 创建Api
+sidebar_label: 创建Api
+hide_title: true
+description: 'RTK Query > API: createApi reference'
+---
+
+&nbsp;
+
+# `createApi`
+
+`createApi` 是 RTK Query 功能的核心。它允许你定义一组"端点"，描述如何从后端 API 和其他异步源获取数据，包括如何获取和转换这些数据的配置。它生成[一个 "API 切片" 结构](./created-api/overview.mdx)，该结构包含 Redux 逻辑（可选的 React 钩子），为你封装了数据获取和缓存过程。
+
+:::tip
+
+通常，你应该只有一个 API 切片用于你的应用需要通信的每个基础 URL。例如，如果你的网站从 `/api/posts` 和 `/api/users` 获取数据，你应该有一个单独的 API 切片，其基础 URL 为 `/api/`，并为 `posts` 和 `users` 定义单独的端点。这样你可以有效地利用[自动重新获取](../usage/automated-refetching.mdx)功能，通过定义跨端点的 [tag](../usage/automated-refetching.mdx#tags) 关系。
+
+出于可维护性的考虑，你可能希望在多个文件中分割端点定义，同时仍然维护一个包含所有这些端点的单一 API 切片。请参阅 [代码分割](../usage/code-splitting.mdx) 了解如何使用 `injectEndpoints` 属性将 API 端点从其他文件注入到单一 API 切片定义中。
+
+:::
+
+```ts title="示例：src/services/pokemon.ts"
+// 文件：src/services/types.ts noEmit
+export type Pokemon = {}
+
+// 文件：src/services/pokemon.ts
+// 需要使用 React-specific 入口点以生成 React 钩子
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import type { Pokemon } from './types'
+
+// highlight-start
+// 使用基础 URL 和预期的端点定义服务
+export const pokemonApi = createApi({
+  reducerPath: 'pokemonApi',
+  baseQuery: fetch
+
+Base
+
+Query({ baseUrl: 'https://pokeapi.co/api/v2/' }),
+  endpoints: (builder) => ({
+    getPokemonByName: builder.query<Pokemon, string>({
+      query: (name) => `pokemon/${name}`,
+    }),
+  }),
+})
+// highlight-end
+
+// highlight-start
+// 导出用于函数组件的钩子，这些钩子是
+// 基于定义的端点自动生成的
+export const { useGetPokemonByNameQuery } = pokemonApi
+// highlight-end
+```
+
+## 参数
+
+`createApi` 接受一个包含以下选项的单一配置对象参数：
+
+```ts no-transpile
+  baseQuery(args: InternalQueryArgs, api: BaseQueryApi, extraOptions?: DefinitionExtraOptions): any;
+  endpoints(build: EndpointBuilder<InternalQueryArgs, TagTypes>): Definitions;
+  extractRehydrationInfo?: (
+    action: UnknownAction,
+    {
+      reducerPath,
+    }: {
+      reducerPath: ReducerPath
+    }
+  ) =>
+    | undefined
+    | CombinedState<Definitions, TagTypes, ReducerPath>
+  tagTypes?: readonly TagTypes[];
+  reducerPath?: ReducerPath;
+  serializeQueryArgs?: SerializeQueryArgs<InternalQueryArgs>;
+  keepUnusedDataFor?: number; // 值以秒为单位
+  refetchOnMountOrArgChange?: boolean | number; // 值以秒为单位
+  refetchOnFocus?: boolean;
+  refetchOnReconnect?: boolean;
+```
+
+### `baseQuery`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.baseQuery)
+
+#### baseQuery 函数参数
+
+- `args` - 给定端点的 `query` 函数的返回值
+- `api` - `BaseQueryApi` 对象包含：
+  - `signal` - 一个 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) 对象，可用于中止 DOM 请求和/或读取请求是否被中止。
+  - `abort` - 附加到 `signal` 的 AbortController 的 [`abort()`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort) 方法。
+  - `dispatch` - 对应 Redux 存储的 `store.dispatch` 方法
+  - `getState` - 可调用的函数，用于访问当前存储状态
+  - `extra` - 作为 thunk.extraArgument 提供给 configureStore 的 getDefaultMiddleware 选项。
+  - `endpoint` - 端点的名称。
+  - `type` - 请求类型（`query` 或 `mutation`）。
+  - `forced` - 表示查询是否被强制。
+- `extraOptions` - 给定端点提供的可选 `extraOptions` 属性的值
+
+#### baseQuery 函数签名
+
+```ts title="Base Query 签名" no-transpile
+export type BaseQueryFn<
+  Args = any,
+  Result = unknown,
+  Error = unknown,
+  DefinitionExtraOptions = {},
+  Meta = {},
+> = (
+  args: Args,
+  api: BaseQueryApi,
+  extraOptions: DefinitionExtraOptions,
+) => MaybePromise<QueryReturnValue<Result, Error, Meta>>
+
+export interface BaseQueryApi {
+  signal: AbortSignal
+  abort: (reason?: string) => void
+  dispatch: ThunkDispatch<any, any, any>
+  getState: () => unknown
+  extra: unknown
+  endpoint: string
+  type: 'query' | 'mutation'
+  forced?: boolean
+}
+
+export type QueryReturnValue<T = unknown, E = unknown, M = unknown> =
+  | {
+      error: E
+      data?: undefined
+      meta?: M
+    }
+  | {
+      error?: undefined
+      data: T
+      meta?: M
+    }
+```
+
+[examples](docblock://query/createApi.ts?token=CreateApiOptions.baseQuery)
+
+### `endpoints`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.endpoints)
+
+请参阅 [端点的解剖](#anatomy-of-an-endpoint) 了解单个属性的详细信息。
+
+#### 查询端点定义
+
+```ts title="查询端点定义" no-transpile
+export type QueryDefinition<
+  QueryArg,
+  BaseQuery extends BaseQueryFn,
+  TagTypes extends string,
+  ResultType,
+  ReducerPath extends string = string,
+> = {
+  query(arg: QueryArg): BaseQueryArg<BaseQuery>
+
+  /* `query` 或 `queryFn` 可以存在，但不能同时存在 */
+  queryFn(
+    arg: QueryArg,
+    api: BaseQueryApi,
+    extraOptions: BaseQueryExtraOptions<BaseQuery>,
+    baseQuery: (arg: Parameters<BaseQuery>[0]) => ReturnType<BaseQuery>,
+  ): MaybePromise<QueryReturnValue<ResultType, BaseQueryError<BaseQuery>>>
+
+  /* transformResponse 只在 `query` 中可用，不在 `queryFn` 中可用 */
+  transformResponse?(
+    baseQueryReturnValue: BaseQueryResult<BaseQuery>,
+    meta: BaseQueryMeta<BaseQuery>,
+    arg: QueryArg,
+  ): ResultType | Promise<ResultType>
+
+  /* transformErrorResponse 只在 `query` 中可用，不在 `queryFn` 中可用 */
+  transformErrorResponse?(
+    baseQueryReturnValue: BaseQueryError<BaseQuery>,
+    meta: BaseQueryMeta<BaseQuery>,
+    arg: QueryArg,
+  ): unknown
+
+  extraOptions?: BaseQueryExtraOptions<BaseQuery>
+
+  providesTags?: ResultDescription<
+    TagTypes,
+    ResultType,
+    QueryArg,
+    BaseQueryError<BaseQuery>
+  >
+
+  keepUnusedDataFor?: number
+
+  onQueryStarted?(
+    arg: QueryArg,
+    {
+      dispatch,
+      getState,
+      extra,
+      requestId,
+      queryFulfilled,
+      getCacheEntry,
+      updateCachedData, // 只在查询端点可用
+    }: QueryLifecycleApi,
+  ): Promise<void>
+
+  onCacheEntryAdded?(
+    arg: QueryArg,
+    {
+      dispatch,
+      getState,
+      extra,
+      requestId,
+      cacheEntryRemoved,
+      cacheDataLoaded,
+      getCacheEntry,
+      updateCachedData, // 只在查询端点可用
+    }: QueryCacheLifecycleApi,
+  ): Promise<void>
+}
+```
+
+#### 变更端点定义
+
+```ts title="变更端点定义" no-transpile
+export type MutationDefinition<
+  QueryArg,
+  BaseQuery extends BaseQueryFn,
+  TagTypes extends string,
+  ResultType,
+  ReducerPath extends string = string,
+  Context = Record<string, any>,
+> = {
+  query(arg: QueryArg): BaseQueryArg<BaseQuery>
+
+  /* `query` 或 `queryFn` 可以存在，但不能同时存在 */
+  queryFn(
+    arg: QueryArg,
+    api: BaseQueryApi,
+    extraOptions: BaseQueryExtraOptions<BaseQuery>,
+    baseQuery: (arg: Parameters<BaseQuery>[0]) => ReturnType<BaseQuery>,
+  ): MaybePromise<QueryReturnValue<ResultType, BaseQueryError<BaseQuery>>>
+
+  /* transformResponse 只在 `query` 中可用，不在 `queryFn` 中可用 */
+  transformResponse?(
+    baseQueryReturnValue: BaseQueryResult<BaseQuery>,
+    meta: BaseQueryMeta<BaseQuery>,
+    arg: QueryArg,
+  ): ResultType | Promise<ResultType>
+
+  /* transformErrorResponse 只在 `query` 中可用，不在 `queryFn` 中可用 */
+  transformErrorResponse?(
+    baseQueryReturnValue: BaseQueryError<BaseQuery>,
+    meta: BaseQueryMeta<BaseQuery>,
+    arg: QueryArg,
+  ): unknown
+
+  extraOptions?: BaseQueryExtraOptions<BaseQuery>
+
+  invalidatesTags?: ResultDescription<TagTypes, ResultType, QueryArg>
+
+  onQueryStarted?(
+    arg: QueryArg,
+    {
+      dispatch,
+      getState,
+      extra,
+      requestId,
+      queryFulfilled,
+      getCacheEntry,
+    }: MutationLifecycleApi,
+  ): Promise<void>
+
+  onCacheEntryAdded?(
+    arg: QueryArg,
+    {
+      dispatch,
+      getState,
+      extra,
+      requestId,
+      cacheEntryRemoved,
+      cacheDataLoaded,
+      getCacheEntry,
+    }: MutationCacheLifecycleApi,
+  ): Promise<void>
+}
+```
+
+#### 如何使用端点
+
+当定义一个像下面的 `getPosts` 这样的键时，需要知道这个名称将从 `api` 中导出，并能在 `api.endpoints.getPosts.useQuery()`，`api.endpoints.getPosts.initiate()` 和 `api.endpoints.getPosts.select()` 下被引用。对于 `mutation` 也是一样，但它们引用的是 `useMutation` 而不是 `useQuery`。
+
+```ts
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+interface Post {
+  id: number
+  name: string
+}
+type PostsResponse = Post[]
+
+const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: '/' }),
+  tagTypes: ['Posts'],
+  endpoints: (build) => ({
+    getPosts: build.query<PostsResponse, void>({
+      query: () => 'posts',
+      providesTags: (result) =>
+        result ? result.map(({ id }) => ({ type: 'Posts', id })) : [],
+    }),
+    addPost: build.mutation<Post, Partial<Post>>({
+      query: (body) => ({
+        url: `posts`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Posts'],
+    }),
+  }),
+})
+
+// 自动生成的钩子
+export const { useGetPostsQuery, useAddPostMutation } = api
+
+// 可能的导出
+export const { endpoints, reducerPath, reducer, middleware } = api
+// reducerPath, reducer, middleware 只在存储配置中使用
+// endpoints 将有:
+// endpoints.getPosts.initiate(), endpoints.getPosts.select(), endpoints.getPosts.useQuery()
+// endpoints.addPost.initiate(), endpoints.addPost.select(), endpoints.addPost.useMutation()
+// 查看 `createApi` 概述以获取 _所有导出_
+```
+
+### `extractRehydrationInfo`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.extractRehydrationInfo)
+
+[examples](docblock://query/createApi.ts?token=CreateApiOptions.extractRehydrationInfo)
+
+参见 [服务器端渲染](../usage/server-side-rendering.mdx) 和
+[持久化和重塑](../usage/persistence-and-rehydration.mdx)。
+
+### `tagTypes`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.tagTypes)
+
+[examples](docblock://query/createApi.ts?token=CreateApiOptions.tagTypes)
+
+### `reducerPath`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.reducerPath)
+
+[examples](docblock://query/createApi.ts?token=CreateApiOptions.reducerPath)
+
+### `serializeQueryArgs`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.serializeQueryArgs)
+
+默认情况下，此函数将获取查询参数，对适用的对象键进行排序，将结果字符串化，并将其与端点名称连接起来。这将根据参数+端点名称的组合（忽略对象键顺序）创建一个缓存键，以便调用任何给定的端点与相同的参数将产生相同的缓存键。
+
+### `keepUnusedDataFor`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.keepUnusedDataFor)
+
+### `refetchOnMountOrArgChange`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.refetchOnMountOrArgChange)
+
+:::note
+你可以在 `createApi` 中全局设置这个，但你也可以通过将 `refetchOnMountOrArgChange` 传递给每个单独的 hook 调用或者通过在分发 [`initiate`](./created-api/endpoints.mdx#initiate) 动作时传递 `forceRefetch: true` 来覆盖默认值并有更精细的控制。
+:::
+
+### `refetchOnFocus`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.refetchOnFocus)
+
+:::note
+你可以在 `createApi` 中全局设置这个，但你也可以通过将 `refetchOnFocus` 传递给每个单独的 hook 调用或者在分发 [`initiate`](./created-api/endpoints.mdx#initiate) 动作时覆盖默认值并有更精细的控制。
+
+如果你在手动分发查询时指定 `track: false`，RTK Query 将无法为你自动重新获取。
+:::
+
+### `refetchOnReconnect`
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.refetchOnReconnect)
+
+:::note
+你可以在 `createApi` 中全局设置这个，但你也可以通过将 `refetchOnReconnect` 传递给每个单独的 hook 调用或者在分发 [`initiate`](./created-api/endpoints.mdx#initiate) 动作时覆盖默认值并有更精细的控制。
+
+如果你在手动分发查询时指定 `track: false`，RTK Query 将无法为你自动重新获取。
+:::
+
+## 端点的解剖
+
+### `query`
+
+_(如果没有提供 `queryFn`，则必需)_
+
+```ts title="query 签名" no-transpile
+export type query = <QueryArg>(
+  arg: QueryArg,
+) => string | Record<string, unknown>
+
+// with `fetchBaseQuery`
+export type query = <QueryArg>(arg: QueryArg) => string | FetchArgs
+```
+
+[summary](docblock://query/endpointDefinitions.ts?token=EndpointDefinitionWithQuery.query)
+
+[examples](docblock://query/endpointDefinitions.ts?token=EndpointDefinitionWithQuery.query)
+
+### `queryFn`
+
+_(如果没有提供 `query`，则必需)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=EndpointDefinitionWithQueryFn.queryFn)
+
+与 `baseQuery` 的相同参数一起调用，以及提供的 `baseQuery` 函数本身。它预期返回一个具有 `data` 或 `error` 属性的对象，或者一个解析为返回此类对象的 promise。
+
+参见 [使用 queryFn 自定义查询](../usage/customizing-queries.mdx#customizing-queries-with-queryfn)。
+
+```ts title="queryFn 签名" no-transpile
+queryFn(
+  arg: QueryArg,
+  api: BaseQueryApi,
+  extraOptions: BaseQueryExtraOptions<BaseQuery>,
+  baseQuery: (arg: Parameters<BaseQuery>[0]) => ReturnType<BaseQuery>
+): MaybePromise<
+| {
+    error: BaseQueryError<BaseQuery>
+    data?: undefined
+  }
+| {
+    error?: undefined
+    data: ResultType
+  }
+>
+
+export interface BaseQueryApi {
+  signal: AbortSignal
+  dispatch: ThunkDispatch<any, any, any>
+  getState: () => unknown
+}
+```
+
+#### queryFn 函数参数
+
+- `args` - 调用查询本身时提供的参数
+- `api` - `BaseQueryApi` 对象，包含 `signal`、`dispatch` 和 `getState` 属性
+  - `signal` - 可用于中止 DOM 请求和/或读取请求是否被中止的 [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) 对象。
+  - `dispatch` - 对应 Redux 存储的 `store.dispatch` 方法
+  - `getState` - 可调用的函数，用于访问当前存储状态
+- `extraOptions` - 为端点提供的可选 `extraOptions` 属性的值
+- `baseQuery` - 提供给 api 本身的 `baseQuery` 函数
+
+[examples](docblock://query/endpointDefinitions.ts?token=EndpointDefinitionWithQueryFn.queryFn)
+
+### `transformResponse`
+
+_(可选，与 `queryFn` 不适用)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=EndpointDefinitionWithQuery.transformResponse)
+
+在某些情况下，你可能希望在将查询返回的数据放入缓存之前对其进行操作。在这种情况下，你可以利用 `transformResponse`。
+
+参见 [使用 `transformResponse` 自定义查询响应](../usage/customizing-queries.mdx#customizing-query-responses-with-transformresponse)
+
+```ts title="解包深度嵌套的集合" no-transpile
+transformResponse: (response, meta, arg) =>
+  response.some.deeply.nested.collection
+```
+
+### `transformErrorResponse`
+
+_(可选，与 `queryFn` 不适用)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=EndpointDefinitionWithQuery.transformErrorResponse)
+
+在某些情况下，你可能希望在将查询返回的错误放入缓存之前对其进行操作。在这种情况下，你可以利用 `transformErrorResponse`。
+
+参见 [使用 `transformErrorResponse` 自定义查询响应](../usage/customizing-queries.mdx#customizing-query-responses-with-transformerrorresponse)
+
+```ts title="解包深度嵌套的错误对象" no-transpile
+transformErrorResponse: (response, meta, arg) =>
+  response.data.some.deeply.nested.errorObject
+```
+
+### `extraOptions`
+
+_(可选)_
+
+作为第三个参数传递给提供的 `baseQuery` 函数
+
+### `providesTags`
+
+_(可选，仅适用于查询端点)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.providesTags)
+
+参见 [提供缓存数据](../usage/automated-refetching.mdx#providing-cache-data)。
+
+[examples](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.providesTags)
+
+### `invalidatesTags`
+
+_(可选，仅适用于变更端点)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=MutationExtraOptions.invalidatesTags)
+
+参见 [使缓存数据无效](../usage/automated-refetching.mdx#invalidating-cache-data)。
+
+[examples](docblock://query/endpointDefinitions.ts?token=MutationExtraOptions.invalidatesTags)
+
+### `keepUnusedDataFor`
+
+_(可选，仅适用于查询端点)_
+
+仅对此端点覆盖 api-wide 的 `keepUnusedDataFor` 定义。
+
+[summary](docblock://query/createApi.ts?token=CreateApiOptions.keepUnusedDataFor)
+
+[examples](docblock://query/createApi.ts?token=CreateApiOptions.keepUnusedDataFor)
+
+### `serializeQueryArgs`
+
+_(可选，仅适用于查询端点)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.serializeQueryArgs)
+
+[examples](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.serializeQueryArgs)
+
+### `merge`
+
+_(可选，仅适用于查询端点)_
+
+[summary](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.merge)
+
+[examples](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.merge)
+
+### `forceRefetch`
+
+_(可选，仅适用于查询端点)_
+
+```ts title="forceRefetch 签名" no-transpile
+type forceRefetch = (params: {
+  currentArg: QueryArg | undefined
+  previousArg: QueryArg | undefined
+  state: RootState<any, any, string>
+  endpointState?: QuerySubState<any>
+}) => boolean
+```
+
+[summary](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.forceRefetch)
+
+[examples](docblock://query/endpointDefinitions.ts?token=QueryExtraOptions.forceRefetch)
+
+### `onQueryStarted`
+
+_(可选)_
+
+对 [查询](../usage/queries.mdx) 和 [变更](../usage/mutations.mdx) 都可用。
+
+当你开始每个单独的查询或变更时调用的函数。该函数被调用时会带有一个生命周期 api 对象，其中包含如 `queryFulfilled` 等属性，允许在查询开始、成功和失败时（即在单个查询/变更调用的整个生命周期中）运行代码。
+
+可以在 `mutations` 中用于 [乐观更新](../usage/manual-cache-updates.mdx#optimistic-updates)。
+
+#### 生命周期 API 属性
+
+- `dispatch` - 存储的调度方法。
+- `getState` - 获取存储的当前状态的方法。
+- `extra` - 作为 `thunk.extraArgument` 提供给 `configureStore` 的 `getDefaultMiddleware` 选项的 `extra`。
+- `requestId` - 为查询/变更生成的唯一 ID。
+- `queryFulfilled` - 一个 Promise，将解析为一个带有 `data` 属性（转换后的查询结果）和一个 `meta` 属性（`baseQuery` 返回的 `meta`）。如果查询失败，此 Promise 将拒绝错误。这允许你 `await` 查询完成。
+- `getCacheEntry` - 获取当前缓存条目值的函数。
+- `updateCachedData` _(仅查询端点)_ - 一个接受 'recipe' 回调的函数，指定如何在调用时更新对应缓存的数据。这在内部使用 `immer`，并且可以安全地编写 '可变' 的更新，同时生成下一个不可变状态。
+
+```ts title="Mutation onQueryStarted 签名" no-transpile
+async function onQueryStarted(
+  arg: QueryArg,
+  {
+    dispatch,
+    getState,
+    extra,
+    requestId,
+    queryFulfilled,
+    getCacheEntry,
+  }: MutationLifecycleApi,
+): Promise<void>
+```
+
+```ts title="Query onQueryStarted 签名" no-transpile
+async function onQueryStarted(
+  arg: QueryArg,
+  {
+    dispatch,
+    getState,
+    extra,
+    requestId,
+    queryFulfilled,
+    getCacheEntry,
+    updateCachedData, // 仅查询端点可用
+  }: QueryLifecycleApi,
+): Promise<void>
+```
+
+```ts title="onQueryStarted 查询生命周期示例"
+// 文件: notificationsSlice.ts noEmit
+export const messageCreated = (msg: string) => ({
+  type: 'notifications/messageCreated',
+  payload: msg,
+})
+
+// 文件: api.ts
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query'
+import { messageCreated } from './notificationsSlice'
+
+export interface Post {
+  id: number
+  name: string
+}
+
+const api = createApi({
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/',
+  }),
+  endpoints: (build) => ({
+    getPost: build.query<Post, number>({
+      query: (id) => `post/${id}`,
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        // `onStart` 副作用
+        dispatch(messageCreated('正在获取帖子...'))
+        try {
+          const { data } = await queryFulfilled
+          // `onSuccess` 副作用
+          dispatch(messageCreated('帖子已收到！'))
+        } catch (err) {
+          // `onError` 副作用
+          dispatch(messageCreated('获取帖子出错！'))
+        }
+      },
+    }),
+  }),
+})
+```
+
+### `onCacheEntryAdded`
+
+_(可选)_
+
+对于[查询](../usage/queries.mdx)和[变更](../usage/mutations.mdx)都可用。
+
+当添加新的缓存条目时调用的函数，即当为端点 + 查询参数组合创建新的订阅时。该函数会被一个生命周期 api 对象调用，该对象包含如 `cacheDataLoaded` 和 `cacheDataRemoved` 等属性，允许在添加缓存条目、加载缓存数据和移除缓存条目（即在缓存条目的整个生命周期）时运行代码。
+
+可以用于[流式更新](../usage/streaming-updates.mdx)。
+
+#### 缓存生命周期 API 属性
+
+- `dispatch` - 存储的 dispatch 方法。
+- `getState` - 获取存储当前状态的方法。
+- `extra` - 作为 `thunk.extraArgument` 提供给 `configureStore` 的 `getDefaultMiddleware` 选项的 `extra`。
+- `requestId` - 为缓存条目生成的唯一 ID。
+- `cacheEntryRemoved` - 允许您等待缓存条目从缓存中被移除的时刻的 Promise，这是由于在应用程序中长时间未使用/订阅，或者通过分派 `api.util.resetApiState` 实现的。
+- `cacheDataLoaded` - 一个将以此缓存键的第一个值解析的 Promise。这允许您 `await` 直到实际的值在缓存中。注意：如果在任何值被解析之前，缓存条目从缓存中被移除，此 Promise 将以 `new Error('Promise never resolved before cacheEntryRemoved.')` 拒绝，以防止内存泄漏。您可以重新抛出该错误（或者根本不处理它）- 它将在 `cacheEntryAdded` 外部被捕获。
+- `getCacheEntry` - 获取缓存条目当前值的函数。
+- `updateCachedData` _(仅查询端点)_ - 一个接受 'recipe' 回调的函数，指定如何在调用时更新数据。这在内部使用 `immer`，并且可以安全地编写 '可变' 的更新，同时生成下一个不可变状态。
+
+```ts title="Mutation onCacheEntryAdded 签名" no-transpile
+async function onCacheEntryAdded(
+  arg: QueryArg,
+  {
+    dispatch,
+    getState,
+    extra,
+    requestId,
+    cacheEntryRemoved,
+    cacheDataLoaded,
+    getCacheEntry,
+  }: MutationCacheLifecycleApi,
+): Promise<void>
+```
+
+```ts title="Query onCacheEntryAdded 签名" no-transpile
+async function onCacheEntryAdded(
+  arg: QueryArg,
+  {
+    dispatch,
+    getState,
+    extra,
+    requestId,
+    cacheEntryRemoved,
+    cacheDataLoaded,
+    getCacheEntry,
+    updateCachedData, // 仅对查询端点可用
+  }: QueryCacheLifecycleApi,
+): Promise<void>
+```
+
+## 返回值
+
+参见[创建的 Api" API 参考](./created-api/overview)

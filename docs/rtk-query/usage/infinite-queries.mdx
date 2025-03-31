@@ -1,0 +1,534 @@
+---
+id: infinite-queries
+title: 无限查询
+sidebar_label: 无限查询
+hide_title: true
+description: 'RTK Query > Usage > Infinite Queries: fetching many data pages from a server'
+---
+
+&nbsp;
+
+# 无限查询
+
+## 概述
+
+渲染可以向现有数据集"加载更多"数据或实现"无限滚动"的列表是一种常见的 UI 模式。
+
+RTK Query 通过"无限查询"端点支持这种使用场景。无限查询端点与标准查询端点类似,都是获取数据并缓存结果。但是,无限查询端点具有获取"下一页"和"上一页"的能力,并在单个缓存条目中包含所有相关的已获取页面。
+
+## 无限查询概念
+
+RTK Query 的无限查询支持是基于 [React Query 的无限查询 API 设计](https://tanstack.com/query/latest/docs/framework/react/guides/infinite-queries)。
+
+### 查询参数、页面参数和缓存结构
+
+对于标准查询端点:
+
+- 你指定"查询参数"值,该值被传递给 `query` 或 `queryFn` 函数,用于计算所需的 URL 或执行实际的获取操作
+- 查询参数也会被序列化以生成此特定缓存条目的唯一内部键
+- 单个响应值直接存储为缓存条目中的 `data` 字段
+
+无限查询的工作方式类似,但有几个额外的层次:
+
+- 你仍然指定一个"查询参数",它仍用于生成此特定缓存条目的唯一缓存键
+- 但是,用于缓存键的"查询参数"和用于获取特定页面的"页面参数"是分开的。由于这两者都对确定要获取的内容很有用,**你的 `query` 和 `queryFn` 方法将接收一个包含 `{queryArg, pageParam}` 的组合对象作为第一个参数,而不是仅仅接收 `queryArg` 本身**。
+- 缓存条目中的 `data` 字段存储了一个 `{pages: DataType[], pageParams: PageParam[]}` 结构,其中包含所有已获取页面的结果及其对应的用于获取它们的页面参数。
+
+例如,一个 Pokemon API 端点可能有一个字符串查询参数,如 `"fire"`,但使用页码作为参数来确定要从结果中获取哪一页。对于像 `useGetPokemonInfiniteQuery('fire')` 这样的查询,生成的缓存数据可能如下所示:
+
+```ts no-transpile
+{
+  queries: {
+    "getPokemon('fire')": {
+      data: {
+        pages: [
+          ["Charmander", "Charmeleon"],
+          ["Charizard", "Vulpix"],
+          ["Magmar", "Flareon"]
+        ],
+        pageParams: [
+          1,
+          2,
+          3
+        ]
+      }
+    }
+  }
+}
+```
+
+这种结构允许 UI 在如何渲染数据方面具有灵活性(显示单个页面,扁平化为单个列表),能够限制缓存中保留的页面数量,并且可以根据数据或页面参数动态确定要获取的下一页或上一页。
+
+## 定义无限查询端点
+
+无限查询端点是通过在 `createApi` 的 `endpoints` 部分中返回一个对象并使用 `build.infiniteQuery()` 方法定义字段来定义的。它们是标准查询端点的扩展 - 你可以指定[与标准查询相同的选项](./queries.mdx#defining-query-endpoints)(提供 `query` 或 `queryFn`,使用 `transformResponse` 进行自定义,使用 `onCacheEntryAdded` 和 `onQueryStarted` 定义生命周期,定义标签等)。但是,它们还需要一个额外的 `infiniteQueryOptions` 字段来指定无限查询行为。
+
+使用 TypeScript 时,你必须提供 3 个泛型参数: `build.infiniteQuery<ResultType, QueryArg, PageParam>`,其中 `ResultType` 是单个页面的内容, `QueryArg` 是作为缓存键传入的类型, `PageParam` 是用于请求特定页面的值。如果没有参数,请使用 `void` 作为参数类型。
+
+### `infiniteQueryOptions`
+
+`infiniteQueryOptions` 字段包括:
+
+- `initialPageParam`: 用于第一次请求的默认页面参数值,如果在使用端点时未指定
+- `maxPages`: 一个可选的限制,用于一次在缓存条目中保留多少个已获取页面
+- `getNextPageParam`: 你必须提供的回调,用于根据现有缓存页面和页面参数计算下一页参数
+- `getPreviousPageParam`: 一个可选的回调,如果你尝试向后获取,将用于计算上一页参数。
+
+`initialPageParam` 和 `getNextPageParam` 都是必需的,以确保无限查询能够正确获取下一页数据。此外,在使用端点时可以指定 `initialPageParam`,以覆盖第一次获取的默认值。`maxPages` 和 `getPreviousPageParam` 都是可选的。
+
+### 页面参数函数
+
+`getNextPageParam` 和 `getPreviousPageParam` 是用户定义的,使你能够灵活地确定这些值的计算方式:
+
+```ts
+export type PageParamFunction<DataType, PageParam> = (
+  currentPage: DataType,
+  allPages: DataType[],
+  currentPageParam: PageParam,
+  allPageParams: PageParam[],
+) => PageParam | undefined | null
+```
+
+页面参数可以是任何值:数字、字符串、对象、数组等。由于现有页面参数值存储在 Redux 状态中,你仍应以不可变的方式处理这些值。例如,如果你有一个参数结构,如 `{page: Number, filters: Filters}`,增加页面的方式将是 `return {...currentPageParam, page: currentPageParam.page + 1}`。
+
+由于传入了实际页面内容和页面参数,你可以根据其中任何一个计算新的页面参数。这使得许多可能的无限查询使用场景成为可能,包括基于游标和基于限制+偏移的查询。
+
+"当前"参数将是 `getNextPageParam` 的最后一页,或 `getPreviousPageParam` 的第一页。
+
+如果没有可能的页面可以在该方向上获取,回调应返回 `undefined`。
+
+### 无限查询定义示例
+
+一个完整的示例,用于虚构的 Pokemon API 服务,可能如下所示:
+
+```ts no-transpile title="Infinite Query definition example"
+type Pokemon = {
+  id: string
+  name: string
+}
+
+const pokemonApi = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://example.com/pokemon' }),
+  endpoints: (build) => ({
+    // 3个TypeScript泛型参数:页面内容,查询参数,页面参数
+    getInfinitePokemonWithMax: build.infiniteQuery<Pokemon[], string, number>({
+      infiniteQueryOptions: {
+        // 必须提供一个默认的初始页面参数值
+        initialPageParam: 1,
+        // 可选地限制缓存页面数量
+        maxPages: 3,
+        // 必须提供一个getNextPageParam函数
+        getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) =>
+          lastPageParam + 1,
+        // 可选地提供一个getPreviousPageParam函数
+        getPreviousPageParam: (
+          firstPage,
+          allPages,
+          firstPageParam,
+          allPageParams,
+        ) => {
+          return firstPageParam > 0 ? firstPageParam - 1 : undefined
+        },
+      },
+      // query函数接收{queryArg, pageParam}作为参数
+      query({ queryArg, pageParam }) {
+        return `/type/${queryArg}?page=${pageParam}`
+      },
+    }),
+  }),
+})
+```
+
+## 使用 React Hooks 执行无限查询
+
+[与查询端点类似](./queries.mdx#performing-queries-with-react-hooks),RTK Query 将根据端点的名称自动生成无限查询端点的 React hooks。一个具有 `getPokemon: build.infiniteQuery()` 的端点字段将生成一个名为 `useGetPokemonInfiniteQuery` 的 hook,以及一个附加到端点的通用命名 hook,如 `api.endpoints.getPokemon.useInfiniteQuery`。
+
+### Hook 类型
+
+有 3 个与无限查询相关的 hooks:
+
+1. [`useInfiniteQuery`](../api/created-api/hooks.mdx#useinfinitequery)
+   - 组合 `useInfiniteQuerySubscription` 和 `useInfiniteQueryState`,是主要的 hook。自动触发从端点获取数据,将组件"订阅"到缓存数据,并从 Redux 存储中读取请求状态和缓存数据。
+2. [`useInfiniteQuerySubscription`](../api/created-api/hooks.mdx#useinfinitequerysubscription)
+   - 返回一个 `refetch` 函数和 `fetchNext/PreviousPage` 函数,并接受所有 hooks 选项。自动触发从端点重新获取数据,并将组件"订阅"到缓存数据。
+3. [`useInfiniteQueryState`](../api/created-api/hooks.mdx#useinfinitequerystate)
+   - 返回查询状态并接受 `skip` 和 `selectFromResult`。从 Redux 存储中读取请求状态和缓存数据。
+
+实际上,标准的基于 `useInfiniteQuery` 的 hooks,如 `useGetPokemonInfiniteQuery`,将是你应用程序中主要使用的 hooks,但其他 hooks 可用于特定使用场景。
+
+### 查询 Hook 选项
+
+查询 hooks 期望两个参数: `(queryArg?, queryOptions?)`。
+
+`queryOptions` 对象接受[与 `useQuery` 相同的所有参数](./queries.mdx#query-hook-options),包括 `skip`、`selectFromResult` 和重新获取/轮询选项。
+
+与普通查询 hooks 不同,你的 `query` 或 `queryFn` 回调将接收一个"页面参数"值来生成 URL 或发出请求,而不是传递给 hook 的"查询参数"。默认情况下,端点中指定的 `initialPageParam` 值将用于进行第一次请求,然后你的 `getNext/PreviousPageParam` 回调将用于计算进一步的页面参数,以便你向前或向后获取。
+
+如果你想从不同的页面参数开始,可以通过在 hook 选项中传递它来覆盖 `initialPageParam`:
+
+```ts no-transpile
+const { data } = useGetPokemonInfiniteQuery('fire', {
+  initialPageParam: 3,
+})
+```
+
+仍将根据需要计算下一个和上一个页面参数。
+
+### 常用查询 Hook 返回值
+
+无限查询 hooks 返回[与普通查询 hooks 相同的结果对象](./queries.mdx#frequently-used-query-hook-return-values),但[具有一些特定于无限查询的附加字段](../api/created-api/hooks.mdx#useinfinitequery-signature)和不同的 `data` 和 `currentData` 结构。
+
+- `data` / `currentData`: 这些包含与普通查询相同的"最新成功"和"当前参数的最新"结果,但值是包含所有已获取页面的 `{pages, pageParams}` 无限查询对象,而不是单个响应值。
+- `hasNextPage` / `hasPreviousPage`: 当为 true 时,表示在该方向上应该有另一个页面可供获取。这是通过调用 `getNext/PreviousPageParam` 并传入最新获取的页面来计算的。
+- `isFetchingNext/PreviousPage`: 当为 true 时,表示当前的 `isFetching` 标志代表在该方向上的获取。
+- `isFetchNext/PreviousPageError`: 当为 true 时,表示当前的 `isError` 标志代表在该方向上的获取失败错误。
+- `fetchNext/PreviousPage`: 触发在该方向上获取另一个页面的方法。
+
+在大多数情况下,你可能会读取 `data` 和 `isLoading` 或 `isFetching` 以渲染 UI。你还需要使用 `fetchNext/PreviousPage` 方法来触发获取更多页面。
+
+### 显示无限查询数据
+
+对于无限查询 hooks,由 hook 返回的 `data` 字段将是包含所有已获取页面的 `{pages, pageParams}` 结构,而不是单个响应值。
+
+这使你可以控制如何使用数据进行显示。你可以将所有页面内容扁平化为单个数组以实现无限滚动,使用单个页面结果进行分页,对条目进行排序或反转,或任何其他你需要的逻辑来使用这些数据渲染 UI。
+
+与任何其他 Redux 数据一样,你应该避免修改这些数组(包括直接调用 `array.sort/reverse()` 在现有引用上)。
+
+### 无限查询 Hook 使用示例
+
+以下是一个典型的无限查询端点定义示例,以及在组件中的 hook 使用示例:
+
+```tsx no-transpile
+type Pokemon = {
+  id: string
+  name: string
+}
+
+const pokemonApi = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://example.com/pokemon' }),
+  endpoints: (build) => ({
+    getPokemon: build.infiniteQuery<Pokemon[], string, number>({
+      infiniteQueryOptions: {
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) =>
+          lastPageParam + 1,
+      },
+      query({ queryArg, pageParam }) {
+        return `/type/${queryArg}?page=${pageParam}`
+      },
+    }),
+  }),
+})
+
+function PokemonList({ pokemonType }: { pokemonType: string }) {
+  const { data, isFetching, fetchNextPage, fetchPreviousPage, refetch } =
+    pokemonApi.useGetPokemonInfiniteQuery(pokemonType)
+
+  const handleNextPage = async () => {
+    await fetchNextPage()
+  }
+
+  const handleRefetch = async () => {
+    await refetch()
+  }
+
+  const allResults = data?.pages.flat() ?? []
+
+  return (
+    <div>
+      <div>Type: {pokemonType}</div>
+      <div>
+        {allResults.map((pokemon, i: number | null | undefined) => (
+          <div key={i}>{pokemon.name}</div>
+        ))}
+      </div>
+      <button onClick={() => handleNextPage()}>Fetch More</button>
+      <button onClick={() => handleRefetch()}>Refetch</button>
+    </div>
+  )
+}
+```
+
+在这个示例中,服务器返回一个 Pokemon 数组作为每个单独页面的响应。此组件将结果显示为单个列表。由于 `data` 字段本身具有所有响应的 `pages` 数组,组件需要将页面扁平化为单个数组以渲染该列表。或者,它可以映射页面并以分页格式显示它们。
+
+同样,此示例依赖于用户手动点击"Fetch More"按钮来触发获取下一页,但可以根据 `IntersectionObserver`、列表组件触发某种"列表末尾"事件或其他类似指示器自动调用 `fetchNextPage`。
+
+端点本身仅定义了 `getNextPageParam`,因此此示例不支持向后获取,但在向后获取有意义的情况下可以提供。这里的页面参数是一个简单的递增数字,但页面参数
+
+## 无限查询行为
+
+### 重叠页面获取
+
+由于所有页面都存储在单个缓存条目中,一次只能有一个请求在进行。RTK Query 已经内置了逻辑,如果已经有一个请求在进行,则会退出运行新请求。
+
+这意味着,如果你在现有请求进行时再次调用 `fetchNextPage()`,第二次调用实际上不会执行请求。确保在有潜在请求进行时,先等待前一个 `fetchNextPage()` promise 结果或检查 `isFetching` 标志。
+
+从 `fetchNextPage()` 返回的 promise 确实具有[一个 `promise.abort()` 方法](../../api/createAsyncThunk.mdx#canceling-while-running),该方法将强制早期请求拒绝并不保存结果。请注意,这将标记缓存条目为错误,但数据仍然存在。由于 `promise.abort()` 是同步的,你还需要等待前一个 promise 以确保处理拒绝,然后触发新的页面获取。
+
+### 重新获取
+
+当无限查询端点被重新获取(由于标签失效、轮询、参数更改配置或手动重新获取),RTK Query 将尝试按顺序重新获取缓存中当前的所有页面。这确保客户端始终使用最新数据,并避免过时的游标或重复记录。
+
+如果缓存条目被移除并重新添加,它将仅从获取初始页面开始。
+
+### 限制缓存条目大小
+
+对于给定查询参数,所有已获取页面都存储在缓存条目中的 `pages` 数组中。默认情况下,存储页面的数量没有限制 - 如果你调用 `fetchNextPage()` 1000 次, `data.pages` 将存储 1000 个页面。
+
+如果你需要限制存储页面的数量(例如内存使用原因),可以作为端点的一部分提供 `maxPages` 选项。如果提供,在已经达到最大值时获取页面将自动删除相反方向的最后一个页面。例如,使用 `maxPages: 3` 和缓存页面参数 `[1, 2, 3]`,调用 `fetchNextPage()` 将导致页面 `1` 被删除,新的缓存页面为 `[2, 3, 4]`。从那里,调用 `fetchNextPage()` 将导致 `[3, 4, 5]`,或调用 `fetchPreviousPage()` 将返回到 `[1, 2, 3]`。
+
+## 常见无限查询模式
+
+`getNext/PreviousPageParam` 回调提供了灵活性,使你能够与后端 API 进行交互。
+
+以下是一些常见无限查询模式的示例,展示了你如何处理不同的使用场景。
+
+有关更多示例,以及查看这些模式的实际应用,请参阅[RTK Query "无限查询"示例应用程序](https://github.com/reduxjs/redux-toolkit/tree/master/examples/query/react/infinite-queries)。
+
+### 基本分页
+
+对于只需要页码的简单 API,你可以根据现有页面参数计算上一页和下一页的页码:
+
+```ts no-transpile
+// 简单示例
+const pokemonApi = createApi({
+  baseQuery,
+  endpoints: (build) => ({
+    getInfinitePokemon: build.infiniteQuery<Pokemon[], string, number>({
+      infiniteQueryOptions: {
+        initialPageParam: 0,
+        getNextPageParam: (lastPage, allPages, lastPageParam) =>
+          lastPageParam + 1,
+        getPreviousPageParam: (firstPage, allPages, firstPageParam) => {
+          return firstPageParam > 0 ? firstPageParam - 1 : undefined
+        },
+      },
+      query({ pageParam }) {
+        return `https://example.com/listItems?page=${pageParam}`
+      },
+    }),
+  }),
+})
+```
+
+### 带大小的分页
+
+对于接受页码和页面大小值并在响应中包含总页数的 API,你可以计算是否还有更多页面:
+
+```ts no-transpile
+type ProjectsResponse = {
+  projects: Project[]
+  serverTime: string
+  totalPages: number
+}
+
+type ProjectsInitialPageParam = {
+  page: number
+  size: number
+}
+
+const projectsApi = createApi({
+  baseQuery,
+  endpoints: (build) => ({
+    projectsPaginated: build.infiniteQuery<
+      ProjectsResponse,
+      void,
+      ProjectsInitialPageParam
+    >({
+      infiniteQueryOptions: {
+        initialPageParam: {
+          page: 0,
+          size: 20,
+        },
+        getNextPageParam: (
+          lastPage,
+          allPages,
+          lastPageParam,
+          allPageParams,
+        ) => {
+          const nextPage = lastPageParam.page + 1
+          const remainingPages = lastPage?.totalPages - nextPage
+
+          if (remainingPages <= 0) {
+            return undefined
+          }
+
+          return {
+            ...lastPageParam,
+            page: nextPage,
+          }
+        },
+        getPreviousPageParam: (
+          firstPage,
+          allPages,
+          firstPageParam,
+          allPageParams,
+        ) => {
+          const prevPage = firstPageParam.page - 1
+          if (prevPage < 0) return undefined
+
+          return {
+            ...firstPageParam,
+            page: prevPage,
+          }
+        },
+      },
+      query: ({ pageParam: { page, size } }) => {
+        return `https://example.com/api/projectsPaginated?page=${page}&size=${size}`
+      },
+    }),
+  }),
+})
+```
+
+### 双向游标
+
+如果服务器在响应中发送游标值,你可以使用这些值作为下一次和上一次请求的页面参数:
+
+```ts no-transpile
+type ProjectsCursorPaginated = {
+  projects: Project[]
+  serverTime: string
+  pageInfo: {
+    startCursor: number
+    endCursor: number
+    hasNextPage: boolean
+    hasPreviousPage: boolean
+  }
+}
+
+type ProjectsInitialPageParam = {
+  before?: number
+  around?: number
+  after?: number
+  limit: number
+}
+type QueryParamLimit = number
+
+const projectsApi = createApi({
+  baseQuery,
+  endpoints: (build) => ({
+    getProjectsBidirectionalCursor: build.infiniteQuery<
+      ProjectsCursorPaginated,
+      QueryParamLimit,
+      ProjectsInitialPageParam
+    >({
+      infiniteQueryOptions: {
+        initialPageParam: { limit: 10 },
+        getPreviousPageParam: (
+          firstPage,
+          allPages,
+          firstPageParam,
+          allPageParams,
+        ) => {
+          if (!firstPage.pageInfo.hasPreviousPage) {
+            return undefined
+          }
+          return {
+            before: firstPage.pageInfo.startCursor,
+            limit: firstPageParam.limit,
+          }
+        },
+        getNextPageParam: (
+          lastPage,
+          allPages,
+          lastPageParam,
+          allPageParams,
+        ) => {
+          if (!lastPage.pageInfo.hasNextPage) {
+            return undefined
+          }
+          return {
+            after: lastPage.pageInfo.endCursor,
+            limit: lastPageParam.limit,
+          }
+        },
+      },
+      query: ({ pageParam: { before, after, around, limit } }) => {
+        const params = new URLSearchParams()
+        params.append('limit', String(limit))
+        if (after != null) {
+          params.append('after', String(after))
+        } else if (before != null) {
+          params.append('before', String(before))
+        } else if (around != null) {
+          params.append('around', String(around))
+        }
+
+        return `https://example.com/api/projectsBidirectionalCursor?${params.toString()}`,
+      },
+    }),
+  }),
+})
+```
+
+### 限制和偏移
+
+如果 API 期望限制和偏移值的组合,这些值也可以根据响应和页面参数进行计算。
+
+```ts no-transpile
+// 如果API期望限制和偏移值的组合,这些值也可以根据响应和页面参数进行计算
+export type ProjectsResponse = {
+  projects: Project[]
+  numFound: number
+  serverTime: string
+}
+
+type ProjectsInitialPageParam = {
+  offset: number
+  limit: number
+}
+
+const projectsApi = createApi({
+  baseQuery,
+  endpoints: (build) => ({
+    projectsLimitOffset: build.infiniteQuery<
+      ProjectsResponse,
+      void,
+      ProjectsInitialPageParam
+    >({
+      infiniteQueryOptions: {
+        initialPageParam: {
+          offset: 0,
+          limit: 20,
+        },
+        getNextPageParam: (
+          lastPage,
+          allPages,
+          lastPageParam,
+          allPageParams,
+        ) => {
+          const nextOffset = lastPageParam.offset + lastPageParam.limit
+          const remainingItems = lastPage?.numFound - nextOffset
+
+          if (remainingItems <= 0) {
+            return undefined
+          }
+
+          return {
+            ...lastPageParam,
+            offset: nextOffset,
+          }
+        },
+        getPreviousPageParam: (
+          firstPage,
+          allPages,
+          firstPageParam,
+          allPageParams,
+        ) => {
+          const prevOffset = firstPageParam.offset - firstPageParam.limit
+          if (prevOffset < 0) return undefined
+
+          return {
+            ...firstPageParam,
+            offset: firstPageParam.offset - firstPageParam.limit,
+          }
+        },
+      },
+      query: ({ pageParam: { offset, limit } }) => {
+        return `https://example.com/api/projectsLimitOffset?offset=${offset}&limit=${limit}`
+      },
+    }),
+  }),
+})
+```
